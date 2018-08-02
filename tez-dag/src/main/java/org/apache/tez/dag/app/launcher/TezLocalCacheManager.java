@@ -31,9 +31,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.HashSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -78,9 +78,8 @@ public class TezLocalCacheManager {
 
     try {
       // construct new threads with helpful names
-      ThreadFactory threadFactory = new ThreadFactoryBuilder()
-          .setNameFormat("TezLocalCacheManager Downloader #%d")
-          .build();
+      ThreadFactory threadFactory =
+          new ThreadFactoryBuilder().setNameFormat("TezLocalCacheManager Downloader #%d").build();
       threadPool = Executors.newCachedThreadPool(threadFactory);
 
       // start all fetches
@@ -96,14 +95,15 @@ public class TezLocalCacheManager {
         Path linkPath = new Path(cwd, entry.getKey());
 
         if (resourceInfo.containsKey(resource)) {
-            // We've already downloaded this resource and just need to add another link.
-            resourceInfo.get(resource).linkPaths.add(linkPath);
+          // We've already downloaded this resource and just need to add another link.
+          resourceInfo.get(resource).linkPaths.add(linkPath);
         } else {
           // submit task to download the object
           java.nio.file.Path downloadDir = Files.createTempDirectory(tempDir, resourceName);
           Path dest = new Path(downloadDir.toAbsolutePath().toString());
           FSDownload downloader = new FSDownload(fileContext, ugi, conf, dest, resource);
           Future<Path> downloadedPath = threadPool.submit(downloader);
+
           resourceInfo.put(resource, new ResourceInfo(downloadedPath, linkPath));
         }
       }

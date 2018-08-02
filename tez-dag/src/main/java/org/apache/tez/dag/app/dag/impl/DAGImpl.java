@@ -44,8 +44,12 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.tez.common.TezUtilsInternal;
 import org.apache.tez.common.counters.LimitExceededException;
+import org.apache.tez.dag.app.RecoveryParser;
+import org.apache.tez.dag.app.dag.event.DAGEventRecoverEvent;
 import org.apache.tez.dag.app.dag.event.DAGEventTerminateDag;
 import org.apache.tez.dag.app.dag.event.DiagnosableEvent;
+import org.apache.tez.dag.app.dag.event.VertexEventRecoverVertex;
+import org.apache.tez.dag.history.events.VertexFinishedEvent;
 import org.apache.tez.state.OnStateChangedCallback;
 import org.apache.tez.state.StateMachineTez;
 import org.slf4j.Logger;
@@ -87,7 +91,6 @@ import org.apache.tez.dag.api.records.DAGProtos.PlanKeyValuePair;
 import org.apache.tez.dag.api.records.DAGProtos.PlanVertexGroupInfo;
 import org.apache.tez.dag.api.records.DAGProtos.VertexPlan;
 import org.apache.tez.dag.app.AppContext;
-import org.apache.tez.dag.app.RecoveryParser.VertexRecoveryData;
 import org.apache.tez.dag.app.TaskCommunicatorManagerInterface;
 import org.apache.tez.dag.app.RecoveryParser.DAGRecoveryData;
 import org.apache.tez.dag.app.TaskHeartbeatHandler;
@@ -106,14 +109,12 @@ import org.apache.tez.dag.app.dag.event.DAGEvent;
 import org.apache.tez.dag.app.dag.event.DAGEventCommitCompleted;
 import org.apache.tez.dag.app.dag.event.DAGEventCounterUpdate;
 import org.apache.tez.dag.app.dag.event.DAGEventDiagnosticsUpdate;
-import org.apache.tez.dag.app.dag.event.DAGEventRecoverEvent;
 import org.apache.tez.dag.app.dag.event.DAGEventSchedulerUpdate;
 import org.apache.tez.dag.app.dag.event.DAGEventStartDag;
 import org.apache.tez.dag.app.dag.event.DAGEventType;
 import org.apache.tez.dag.app.dag.event.DAGEventVertexCompleted;
 import org.apache.tez.dag.app.dag.event.DAGEventVertexReRunning;
 import org.apache.tez.dag.app.dag.event.VertexEvent;
-import org.apache.tez.dag.app.dag.event.VertexEventRecoverVertex;
 import org.apache.tez.dag.app.dag.event.VertexEventTermination;
 import org.apache.tez.dag.app.dag.event.VertexEventType;
 import org.apache.tez.common.security.ACLManager;
@@ -122,7 +123,6 @@ import org.apache.tez.dag.history.events.DAGCommitStartedEvent;
 import org.apache.tez.dag.history.events.DAGFinishedEvent;
 import org.apache.tez.dag.history.events.DAGInitializedEvent;
 import org.apache.tez.dag.history.events.DAGStartedEvent;
-import org.apache.tez.dag.history.events.VertexFinishedEvent;
 import org.apache.tez.dag.history.events.VertexGroupCommitFinishedEvent;
 import org.apache.tez.dag.history.events.VertexGroupCommitStartedEvent;
 import org.apache.tez.dag.records.TezDAGID;
@@ -1231,7 +1231,7 @@ public class DAGImpl implements org.apache.tez.dag.app.dag.DAG,
           clock.getTime(), this.userName, this.dagName, this.getVertexNameIDMapping());
       this.appContext.getHistoryHandler().handle(
           new DAGHistoryEvent(dagId, initEvt));
-    }
+  }
   }
 
   void logJobHistoryStartedEvent() {
@@ -1241,7 +1241,7 @@ public class DAGImpl implements org.apache.tez.dag.app.dag.DAG,
           this.startTime, this.userName, this.dagName);
       this.appContext.getHistoryHandler().handle(
           new DAGHistoryEvent(dagId, startEvt));
-    }
+  }
   }
 
   void logJobHistoryFinishedEvent(TezCounters counters) throws IOException {
@@ -1260,7 +1260,7 @@ public class DAGImpl implements org.apache.tez.dag.app.dag.DAG,
           this.jobPlan);
       this.appContext.getHistoryHandler().handleCriticalEvent(
           new DAGHistoryEvent(dagId, finishEvt));
-    }
+  }
   }
 
   void logJobHistoryUnsuccesfulEvent(DAGState state, TezCounters counters) throws IOException {
@@ -1280,7 +1280,7 @@ public class DAGImpl implements org.apache.tez.dag.app.dag.DAG,
           this.appContext.getApplicationAttemptId(), this.jobPlan);
       this.appContext.getHistoryHandler().handleCriticalEvent(
           new DAGHistoryEvent(dagId, finishEvt));
-    }
+  }
   }
 
   // triggered by vertex_complete
@@ -1544,20 +1544,20 @@ public class DAGImpl implements org.apache.tez.dag.app.dag.DAG,
     }
 
     // check task resources, only check it in non-local mode
-    if (!appContext.isLocal()) {
-      for (Vertex v : vertexMap.values()) {
-        // TODO TEZ-2003 (post) TEZ-2624 Ideally, this should be per source.
-        if (v.getTaskResource().compareTo(appContext.getClusterInfo().getMaxContainerCapability()) > 0) {
-          String msg = "Vertex's TaskResource is beyond the cluster container capability," +
-              "Vertex=" + v.getLogIdentifier() +", Requested TaskResource=" + v.getTaskResource()
-              + ", Cluster MaxContainerCapability=" + appContext.getClusterInfo().getMaxContainerCapability();
-          LOG.error(msg);
-          addDiagnostic(msg);
-          finished(DAGState.FAILED);
-          return DAGState.FAILED;
-        }
-      }
-    }
+//    if (!appContext.isLocal()) {
+//      for (Vertex v : vertexMap.values()) {
+//        // TODO TEZ-2003 (post) TEZ-2624 Ideally, this should be per source.
+//        if (v.getTaskResource().compareTo(appContext.getClusterInfo().getMaxContainerCapability()) > 0) {
+//          String msg = "Vertex's TaskResource is beyond the cluster container capability," +
+//              "Vertex=" + v.getLogIdentifier() +", Requested TaskResource=" + v.getTaskResource()
+//              + ", Cluster MaxContainerCapability=" + appContext.getClusterInfo().getMaxContainerCapability();
+//          LOG.error(msg);
+//          addDiagnostic(msg);
+//          finished(DAGState.FAILED);
+//          return DAGState.FAILED;
+//        }
+//      }
+//    }
 
     try {
       createDAGEdges(this);
@@ -1698,21 +1698,21 @@ public class DAGImpl implements org.apache.tez.dag.app.dag.DAG,
         new HashMap<Vertex, Edge>();
 
     for(String inEdgeId : vertexPlan.getInEdgeIdList()){
-      EdgePlan edgePlan = edgePlans.get(inEdgeId);
-      Vertex inVertex = dag.vertexMap.get(edgePlan.getInputVertexName());
-      Edge edge = dag.edges.get(inEdgeId);
-      edge.setSourceVertex(inVertex);
-      edge.setDestinationVertex(vertex);
-      inVertices.put(inVertex, edge);
+        EdgePlan edgePlan = edgePlans.get(inEdgeId);
+        Vertex inVertex = dag.vertexMap.get(edgePlan.getInputVertexName());
+        Edge edge = dag.edges.get(inEdgeId);
+        edge.setSourceVertex(inVertex);
+        edge.setDestinationVertex(vertex);
+        inVertices.put(inVertex, edge);
     }
 
     for(String outEdgeId : vertexPlan.getOutEdgeIdList()){
-      EdgePlan edgePlan = edgePlans.get(outEdgeId);
-      Vertex outVertex = dag.vertexMap.get(edgePlan.getOutputVertexName());
-      Edge edge = dag.edges.get(outEdgeId);
-      edge.setSourceVertex(vertex);
-      edge.setDestinationVertex(outVertex);
-      outVertices.put(outVertex, edge);
+        EdgePlan edgePlan = edgePlans.get(outEdgeId);
+        Vertex outVertex = dag.vertexMap.get(edgePlan.getOutputVertexName());
+        Edge edge = dag.edges.get(outEdgeId);
+        edge.setSourceVertex(vertex);
+        edge.setDestinationVertex(outVertex);
+        outVertices.put(outVertex, edge);
     }
 
     vertex.setInputVertices(inVertices);
@@ -1724,7 +1724,7 @@ public class DAGImpl implements org.apache.tez.dag.app.dag.DAG,
    * <ul>
    * <li>
    * 1. For the completed dag, recover the dag to the desired state and also its vertices,
-   *    but not task & task attempt. This recovery is sync call (after this Transition, 
+   *    but not task & task attempt. This recovery is sync call (after this Transition,
    *    DAG & vertices are all recovered to the desired state)
    * </li>
    * <li>
@@ -1782,7 +1782,6 @@ public class DAGImpl implements org.apache.tez.dag.app.dag.DAG,
       return DAGState.NEW;
     }
   }
-
   private static class InitTransition
       implements MultipleArcTransition<DAGImpl, DAGEvent, DAGState> {
 
@@ -1801,7 +1800,7 @@ public class DAGImpl implements org.apache.tez.dag.app.dag.DAG,
       if (dag.recoveryData != null && dag.recoveryData.getDAGInitializedEvent() != null) {
         dag.initTime = dag.recoveryData.getDAGInitializedEvent().getInitTime();
       } else {
-        dag.initTime = dag.clock.getTime();
+      dag.initTime = dag.clock.getTime();
       }
       dag.startDAGCpuTime = dag.appContext.getCumulativeCPUTime();
       dag.startDAGGCTime = dag.appContext.getCumulativeGCTime();
@@ -1833,7 +1832,7 @@ public class DAGImpl implements org.apache.tez.dag.app.dag.DAG,
       if (dag.recoveryData != null && dag.recoveryData.getDAGStartedEvent() != null) {
         dag.startTime = dag.recoveryData.getDAGStartedEvent().getStartTime();
       } else {
-        dag.startTime = dag.clock.getTime();
+      dag.startTime = dag.clock.getTime();
       }
       DAGEventStartDag startEvent = (DAGEventStartDag) event;
       List<URL> additionalUrlsForClasspath = startEvent.getAdditionalUrlsForClasspath();
@@ -2095,7 +2094,7 @@ public class DAGImpl implements org.apache.tez.dag.app.dag.DAG,
             LOG.info("VertexGroup was already committed as per recovery"
                 + " data, groupName=" + groupInfo.groupName);
             for (String vertexName : groupInfo.groupMembers) {
-              VertexRecoveryData vertexRecoveryData =
+              RecoveryParser.VertexRecoveryData vertexRecoveryData =
                   recoveryData.getVertexRecoveryData(getVertex(vertexName).getVertexId());
               Preconditions.checkArgument(vertexRecoveryData != null,"Vertex Group has been committed"
                   + ", but no VertexRecoveryData found for its vertex " + vertexName);

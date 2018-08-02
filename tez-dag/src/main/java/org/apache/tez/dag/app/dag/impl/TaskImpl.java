@@ -37,6 +37,7 @@ import com.google.common.collect.Maps;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.classification.InterfaceAudience.Private;
+import org.apache.tez.dag.app.RecoveryParser;
 import org.apache.tez.dag.app.dag.event.TaskEventTAFailed;
 import org.apache.tez.runtime.api.TaskFailureType;
 import org.slf4j.Logger;
@@ -60,7 +61,6 @@ import org.apache.tez.dag.api.oldrecords.TaskState;
 import org.apache.tez.dag.app.AppContext;
 import org.apache.tez.dag.app.ContainerContext;
 import org.apache.tez.dag.app.TaskCommunicatorManagerInterface;
-import org.apache.tez.dag.app.RecoveryParser.TaskRecoveryData;
 import org.apache.tez.dag.app.TaskHeartbeatHandler;
 import org.apache.tez.dag.app.dag.StateChangeNotifier;
 import org.apache.tez.dag.app.dag.Task;
@@ -140,8 +140,7 @@ public class TaskImpl implements Task, EventHandler<TaskEvent> {
   long scheduledTime;
   final StateChangeNotifier stateChangeNotifier;
 
-  private final TaskRecoveryData recoveryData;
-
+  private final RecoveryParser.TaskRecoveryData recoveryData;
   private final List<TezEvent> tezEventsForTaskAttempts = new ArrayList<TezEvent>();
   static final ArrayList<TezEvent> EMPTY_TASK_ATTEMPT_TEZ_EVENTS =
       new ArrayList(0);
@@ -967,7 +966,7 @@ public class TaskImpl implements Task, EventHandler<TaskEvent> {
       if (task.recoveryData != null) {
         TaskStartedEvent tStartedEvent = task.recoveryData.getTaskStartedEvent();
         TaskFinishedEvent tFinishedEvent = task.recoveryData.getTaskFinishedEvent();
-        // If TaskStartedEvent is not seen but TaskFinishedEvent is seen, that means 
+        // If TaskStartedEvent is not seen but TaskFinishedEvent is seen, that means
         // Task is killed before it is started. Just send T_TERMINATE to itself to move to KILLED
         if (tStartedEvent == null
             && tFinishedEvent != null) {

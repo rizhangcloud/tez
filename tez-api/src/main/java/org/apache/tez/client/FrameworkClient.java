@@ -40,11 +40,18 @@ public abstract class FrameworkClient {
   public static FrameworkClient createFrameworkClient(TezConfiguration tezConf) {
 
     boolean isLocal = tezConf.getBoolean(TezConfiguration.TEZ_LOCAL_MODE, TezConfiguration.TEZ_LOCAL_MODE_DEFAULT);
+    String customFrameworkClientClassName = tezConf.get(TezConfiguration.TEZ_AM_CUSTOM_FRAMEWORK_CLIENT_CLASS);
     if (isLocal) {
       try {
         return ReflectionUtils.createClazzInstance("org.apache.tez.client.LocalClient");
       } catch (TezReflectionException e) {
         throw new TezUncheckedException("Fail to create LocalClient", e);
+      }
+    } else if(customFrameworkClientClassName != null) {
+      try {
+        return ReflectionUtils.createClazzInstance(customFrameworkClientClassName);
+      } catch (TezReflectionException e) {
+        throw new TezUncheckedException("Failed to create custom FrameworkClient: " + customFrameworkClientClassName, e);
       }
     }
     return new TezYarnClient(YarnClient.createYarnClient());

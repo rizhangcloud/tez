@@ -150,6 +150,11 @@ public class TezConfiguration extends Configuration {
   public static final String TEZ_AM_SHUFFLE_AUXILIARY_SERVICE_ID_DEFAULT =
       TezConstants.TEZ_SHUFFLE_HANDLER_SERVICE_ID;
 
+  @ConfigurationScope(Scope.AM)
+  @ConfigurationProperty
+  public static final String TEZ_AM_CUSTOM_FRAMEWORK_CLIENT_CLASS = TEZ_AM_PREFIX +
+      "custom.framework.client.class";
+
   /**
    * String value. Specifies a directory where Tez can create temporary job artifacts.
    */
@@ -644,6 +649,13 @@ public class TezConfiguration extends Configuration {
       TEZ_AM_PREFIX + "node-unhealthy-reschedule-tasks";
   public static final boolean
     TEZ_AM_NODE_UNHEALTHY_RESCHEDULE_TASKS_DEFAULT = false;
+
+  /** Int value. Port used for AM RPC*/
+  @ConfigurationScope(Scope.AM)
+  @ConfigurationProperty(type="integer")
+  public static final String TEZ_AM_RPC_PORT =
+    TEZ_AM_PREFIX + "rpc.port";
+  public static final int TEZ_AM_RPC_PORT_DEFAULT = 0;
 
   /** Int value. Number of threads to handle client RPC requests. Expert level setting.*/
   @ConfigurationScope(Scope.AM)
@@ -1864,6 +1876,14 @@ public class TezConfiguration extends Configuration {
   public static final String TEZ_AM_DELETION_TRACKER_CLASS_DEFAULT =
       "org.apache.tez.dag.app.launcher.DeletionTrackerImpl";
 
+  @ConfigurationScope(Scope.AM)
+  @ConfigurationProperty
+  public static final String TEZ_AM_PLATFORM_CLIENT_CLASS =
+      TEZ_AM_PREFIX + "platform.client.class";
+
+  public static final String TEZ_AM_PLATFORM_CLIENT_CLASS_DEFAULT =
+      "org.apache.tez.client.YarnPlatformClient";
+
   /**
    * Boolean value. Default false.
    * By default, configured values for the Summary Entity Types for Timeline will
@@ -1941,5 +1961,61 @@ public class TezConfiguration extends Configuration {
   @ConfigurationScope(Scope.AM)
   public static final String TEZ_SHARED_EXECUTOR_MAX_THREADS = "tez.shared-executor.max-threads";
   public static final int TEZ_SHARED_EXECUTOR_MAX_THREADS_DEFAULT = -1;
+
+  /**
+   * String value. The class to be used for the FrameworkClient.
+   *
+   * if tez.local.mode=true, then org.apache.tez.client.LocalClient will be used
+   * else if tez.am.framework.client.class != null, then tez.am.framework.client.class will be used
+   * else org.apache.tez.client.TezYarnClient will be used
+   *
+   * Expert level setting.
+   */
+  @ConfigurationScope(Scope.AM)
+  @ConfigurationProperty
+  public static final String TEZ_AM_FRAMEWORK_CLIENT_CLASS = TEZ_AM_PREFIX + "framework.client.class";
+
+  /**
+   * String value
+   */
+  @ConfigurationScope(Scope.AM)
+  @ConfigurationProperty
+  public static final String TEZ_AM_ZOOKEEPER_QUORUM = TEZ_AM_PREFIX
+      + "zookeeper.quorum";
+
+  /**
+   * String value
+   */
+  @ConfigurationScope(Scope.AM)
+  @ConfigurationProperty
+  public static final String TEZ_AM_REGISTRY_NAMESPACE = TEZ_AM_PREFIX
+      + "registry.namespace";
+  public static final String TEZ_AM_REGISTRY_NAMESPACE_DEFAULT = "/tez_am/server";
+
+  /**
+   * Integer value
+   */
+  @ConfigurationScope(Scope.AM)
+  @ConfigurationProperty
+  public static final String TEZ_AM_CURATOR_BACKOFF_SLEEP = TEZ_AM_PREFIX
+      + "curator.backoff.sleep";
+  public static final int TEZ_AM_CURATOR_BACKOFF_SLEEP_DEFAULT = 1000;
+
+  /**
+   * Integer value
+   */
+  @ConfigurationScope(Scope.AM)
+  @ConfigurationProperty
+  public static final String TEZ_AM_CURATOR_MAX_RETRIES = TEZ_AM_PREFIX
+      + "curator.max.retries";
+  public static final int TEZ_AM_CURATOR_MAX_RETRIES_DEFAULT = 3;
+
+  /**
+   * String value. The class to be used for the AM registry.
+   */
+  @ConfigurationScope(Scope.AM)
+  @ConfigurationProperty
+  public static final String TEZ_AM_REGISTRY_CLASS = TEZ_AM_PREFIX + "registry.class";
+
 
 }
