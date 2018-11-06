@@ -22,6 +22,9 @@ import org.apache.tez.dag.api.NamedEntityDescriptor;
 @InterfaceStability.Unstable
 public class ContainerLauncherDescriptor extends NamedEntityDescriptor<ContainerLauncherDescriptor> {
 
+  @InterfaceAudience.Private
+  public ContainerLauncherDescriptor() {}
+
   private ContainerLauncherDescriptor(String containerLauncherName, String containerLauncherClassname) {
     super(containerLauncherName, containerLauncherClassname);
   }

@@ -23,7 +23,10 @@ import org.apache.hadoop.classification.InterfaceAudience;
 
 @SuppressWarnings("unchecked")
 public class NamedEntityDescriptor<T extends NamedEntityDescriptor<T>> extends EntityDescriptor<NamedEntityDescriptor<T>>  {
-  private final String entityName;
+  private String entityName;
+
+  @InterfaceAudience.Private
+  public NamedEntityDescriptor() {}
 
   @InterfaceAudience.Private
   public NamedEntityDescriptor(String entityName, String className) {

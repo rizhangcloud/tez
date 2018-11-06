@@ -21,6 +21,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;
@@ -46,12 +47,15 @@ import org.apache.hadoop.security.SecurityUtil;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.log4j.Appender;
+import org.apache.tez.client.TezClientUtils;
 import org.apache.tez.common.io.NonSyncByteArrayOutputStream;
 import org.apache.tez.dag.api.DagTypeConverters;
+import org.apache.tez.dag.api.TezConfiguration;
 import org.apache.tez.dag.records.TezDAGID;
 import org.apache.tez.dag.records.TezTaskAttemptID;
 import org.apache.tez.dag.records.TezVertexID;
 import org.apache.tez.hadoop.shim.HadoopShim;
+import org.apache.tez.serviceplugins.api.ServicePluginsDescriptor;
 import org.apache.tez.serviceplugins.api.TaskAttemptEndReason;
 import org.apache.tez.dag.api.TezConstants;
 import org.apache.tez.dag.api.TezUncheckedException;
@@ -73,9 +77,12 @@ public class TezUtilsInternal {
       IOException {
     FileInputStream confPBBinaryStream = null;
     ConfigurationProto.Builder confProtoBuilder = ConfigurationProto.newBuilder();
+    File confPBFile = new File(baseDir, TezConstants.TEZ_PB_BINARY_CONF_NAME);
+    if(!confPBFile.exists()) {
+      return null;
+    }
     try {
-      confPBBinaryStream =
-          new FileInputStream(new File(baseDir, TezConstants.TEZ_PB_BINARY_CONF_NAME));
+      confPBBinaryStream = new FileInputStream(confPBFile);
       confProtoBuilder.mergeFrom(confPBBinaryStream);
     } finally {
       if (confPBBinaryStream != null) {
@@ -85,6 +92,21 @@ public class TezUtilsInternal {
 
     ConfigurationProto confProto = confProtoBuilder.build();
     return confProto;
+  }
+
+  public static Configuration readTezConfigurationXml(InputStream is) throws IOException {
+    Configuration configuration = new Configuration();
+    configuration.addResource(is);
+    return configuration;
+  }
+
+  public static ConfigurationProto loadConfProtoFromText() throws IOException {
+    try(InputStream cis = ClassLoader.getSystemResourceAsStream(TezConfiguration.TEZ_SITE_XML);
+      InputStream sis = ClassLoader.getSystemResourceAsStream(TezConfiguration.SERVICE_PLUGINS_DESCRIPTOR_JSON)) {
+      Configuration confFromXml = TezUtilsInternal.readTezConfigurationXml(cis);
+      ServicePluginsDescriptor pluginsDescriptor = TezClientUtils.createPluginsDescriptorFromJSON(sis);
+      return TezClientUtils.createFinalConfProtoForApp(confFromXml, pluginsDescriptor);
+    }
   }
 
   public static void addUserSpecifiedTezConfiguration(Configuration conf,

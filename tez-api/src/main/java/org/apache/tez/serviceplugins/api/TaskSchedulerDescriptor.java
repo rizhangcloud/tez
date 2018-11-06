@@ -22,6 +22,9 @@ import org.apache.tez.dag.api.NamedEntityDescriptor;
 @InterfaceStability.Unstable
 public class TaskSchedulerDescriptor extends NamedEntityDescriptor<TaskSchedulerDescriptor> {
 
+  @InterfaceAudience.Private
+  public TaskSchedulerDescriptor() { }
+
   private TaskSchedulerDescriptor(String taskSchedulerName, String schedulerClassname) {
     super(taskSchedulerName, schedulerClassname);
   }

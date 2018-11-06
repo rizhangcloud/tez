@@ -38,6 +38,9 @@ import java.util.TreeMap;
 import java.util.Vector;
 import java.util.Map.Entry;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang.StringUtils;
@@ -45,6 +48,7 @@ import org.apache.commons.math3.util.Precision;
 import org.apache.tez.common.JavaOptsChecker;
 import org.apache.tez.dag.api.records.DAGProtos.AMPluginDescriptorProto;
 import org.apache.tez.serviceplugins.api.ServicePluginsDescriptor;
+import org.codehaus.jackson.annotate.JsonMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.classification.InterfaceAudience.Private;
@@ -197,6 +201,12 @@ public class TezClientUtils {
         tezJarResources, credentials);
 
     return usingTezArchive;
+  }
+
+  public static ServicePluginsDescriptor createPluginsDescriptorFromJSON(InputStream is) throws IOException {
+    ObjectMapper objectMapper = new ObjectMapper();
+    objectMapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
+    return objectMapper.readValue(is, ServicePluginsDescriptor.class);
   }
 
   private static boolean addLocalResources(Configuration conf,
@@ -802,7 +812,7 @@ public class TezClientUtils {
         + "," + TezConstants.TEZ_CONTAINER_LOGGER_NAME);
   }
 
-  static ConfigurationProto createFinalConfProtoForApp(Configuration amConf,
+  public static ConfigurationProto createFinalConfProtoForApp(Configuration amConf,
     ServicePluginsDescriptor servicePluginsDescriptor) {
     assert amConf != null;
     ConfigurationProto.Builder builder = ConfigurationProto.newBuilder();

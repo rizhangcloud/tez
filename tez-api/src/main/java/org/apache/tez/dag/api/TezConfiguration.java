@@ -52,6 +52,7 @@ import com.google.common.annotations.VisibleForTesting;
 public class TezConfiguration extends Configuration {
 
   public final static String TEZ_SITE_XML = "tez-site.xml";
+  public final static String SERVICE_PLUGINS_DESCRIPTOR_JSON = "service_plugins_descriptor.json";
 
   private final static Logger LOG = LoggerFactory.getLogger(TezConfiguration.class);
 

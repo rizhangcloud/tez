@@ -22,6 +22,7 @@ import com.google.common.annotations.VisibleForTesting;
 import java.nio.ByteBuffer;
 import javax.annotation.Nullable;
 
+import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceAudience.Public;
 import org.apache.hadoop.classification.InterfaceStability;
 
@@ -31,9 +32,12 @@ import org.apache.hadoop.classification.InterfaceStability;
  */
 @Public
 public final class UserPayload {
-  private final ByteBuffer payload;
-  private final int version;
+  private ByteBuffer payload;
+  private int version;
   private static final ByteBuffer EMPTY_BYTE = ByteBuffer.wrap(new byte[0]);
+
+  @InterfaceAudience.Private
+  public UserPayload() {}
 
   private UserPayload(@Nullable ByteBuffer payload) {
     this(payload, 0);

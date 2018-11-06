@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -184,6 +185,7 @@ import org.apache.tez.dag.utils.RelocalizationUtils;
 import org.apache.tez.dag.utils.Simple2LevelVersionComparator;
 import org.apache.tez.hadoop.shim.HadoopShim;
 import org.apache.tez.hadoop.shim.HadoopShimsLoader;
+import org.apache.tez.serviceplugins.api.ServicePluginsDescriptor;
 import org.apache.tez.util.TezMxBeanResourceCalculator;
 import org.codehaus.jettison.json.JSONException;
 import org.slf4j.Logger;
@@ -2427,9 +2429,12 @@ public class DAGAppMaster extends AbstractService {
       // TODO Does this really need to be a YarnConfiguration ?
       Configuration conf = new Configuration(new YarnConfiguration());
 
-      ConfigurationProto confProto =
-          TezUtilsInternal.readUserSpecifiedTezConfiguration(System.getenv(Environment.PWD.name()));
-      TezUtilsInternal.addUserSpecifiedTezConfiguration(conf, confProto.getConfKeyValuesList());
+      ConfigurationProto confProto = null;
+      confProto = TezUtilsInternal.readUserSpecifiedTezConfiguration(System.getenv(Environment.PWD.name()));
+      if(confProto == null) {
+        //If confProto isn't available as protobuf, load XML/JSON resources from CLASSPATH
+        confProto = TezUtilsInternal.loadConfProtoFromText();
+      }
 
       AMPluginDescriptorProto amPluginDescriptorProto = null;
       if (confProto.hasAmPluginDescriptor()) {
@@ -2746,6 +2751,11 @@ public class DAGAppMaster extends AbstractService {
       for (TezNamedEntityDescriptorProto namedEntityDescriptorProto : namedEntityDescriptorProtos) {
         NamedEntityDescriptor namedEntityDescriptor = DagTypeConverters
             .convertNamedDescriptorFromProto(namedEntityDescriptorProto);
+        if(namedEntityDescriptor.getUserPayload() == null) {
+          //If custom-plugin descriptor includes no payload, include the defaultPayload
+          //Useful in providing Configuration payload for hand-written JSON descriptors
+          namedEntityDescriptor.setUserPayload(defaultPayload);
+        }
         addDescriptor(resultList, pluginMap, namedEntityDescriptor);
       }
     }
