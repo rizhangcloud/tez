@@ -428,7 +428,7 @@ public class TestDAGAppMaster {
         TEST_DIR.toString(), new String[] {TEST_DIR.toString()},
         new String[] {TEST_DIR.toString()},
         new TezApiVersionInfo().getVersion(), amCreds,
-        "someuser", null);
+        "someuser", null, null);
     am.init(conf);
     am.start();
 
@@ -548,7 +548,7 @@ public class TestDAGAppMaster {
       super(attemptId, ContainerId.newContainerId(attemptId, 1), "hostname", 12345, 12346,
           new SystemClock(), 0, isSession, TEST_DIR.getAbsolutePath(),
           new String[] { TEST_DIR.getAbsolutePath() }, new String[] { TEST_DIR.getAbsolutePath() },
-          new TezDagVersionInfo().getVersion(), createCredentials(), "jobname", null);
+          new TezDagVersionInfo().getVersion(), createCredentials(), "jobname", null, null);
     }
 
     private static Credentials createCredentials() {

@@ -103,6 +103,7 @@ public class TezConstants {
 
   private static final String TEZ_AM_SERVICE_PLUGIN_NAME_YARN_CONTAINERS = "TezYarn";
   private static final String TEZ_AM_SERVICE_PLUGIN_NAME_IN_AM = "TezUber";
+  public static final String TEZ_AM_EXTERNAL_ID = "TEZ_AM_EXTERNAL_ID";
 
   public static String getTezYarnServicePluginName() {
     return TEZ_AM_SERVICE_PLUGIN_NAME_YARN_CONTAINERS;

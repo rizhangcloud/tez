@@ -29,9 +29,9 @@ import org.apache.tez.dag.api.client.DAGClientServer;
 import java.net.InetSocketAddress;
 
 public class AMRegistryUtils {
-  public static AMRecord recordForDAGClientServer(ApplicationId appId, DAGClientServer dagClientServer) {
+  public static AMRecord recordForDAGClientServer(ApplicationId appId, String externalId, DAGClientServer dagClientServer) {
     InetSocketAddress address = dagClientServer.getBindAddress();
-    return new AMRecord(appId, address.getHostName(), address.getPort());
+    return new AMRecord(appId, address.getHostName(), address.getPort(), externalId);
   }
 
   public static AMRegistry createAMRegistry(Configuration conf) throws Exception {

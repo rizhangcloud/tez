@@ -31,16 +31,28 @@ public class AMRecord {
   private ApplicationId appId;
   private String host;
   private int port;
+  private String externalId;
   private final static String APP_ID_RECORD_KEY = "appId";
   private final static String HOST_RECORD_KEY = "host";
   private final static String PORT_RECORD_KEY = "port";
+  private final static String EXTERNAL_ID_KEY = "externalId";
 
-  public AMRecord(ApplicationId appId, String host, int port) {
+  public AMRecord(ApplicationId appId, String host, int port, String externalId) {
     Preconditions.checkNotNull(appId);
     Preconditions.checkNotNull(host);
     this.appId = appId;
     this.host = host;
     this.port = port;
+    //externalId is optional, if not provided, convert to empty string
+    this.externalId = (externalId == null) ? "" : externalId;
+  }
+
+  public AMRecord(AMRecord other) {
+    Preconditions.checkNotNull(other);
+    this.appId = other.getApplicationId();
+    this.host = other.getHost();
+    this.port = other.getPort();
+    this.externalId = other.getExternalId();
   }
 
   public AMRecord(ServiceRecord serviceRecord) {
@@ -52,6 +64,9 @@ public class AMRecord {
     this.host = serviceHost;
     String servicePort = serviceRecord.get(PORT_RECORD_KEY);
     this.port = Integer.parseInt(servicePort);
+    String externalId = serviceRecord.get(EXTERNAL_ID_KEY);
+    Preconditions.checkNotNull(externalId);
+    this.externalId = externalId;
   }
 
   public ApplicationId getApplicationId() {
@@ -66,13 +81,16 @@ public class AMRecord {
     return port;
   }
 
+  public String getExternalId() { return externalId; }
+
   @Override
   public boolean equals(Object other) {
     if(other instanceof AMRecord) {
       AMRecord otherRecord = (AMRecord) other;
       return appId.equals(otherRecord.appId)
           && host.equals(otherRecord.host)
-          && port == otherRecord.port;
+          && port == otherRecord.port
+          && externalId.equals(otherRecord.externalId);
     } else {
       return false;
     }
@@ -80,7 +98,7 @@ public class AMRecord {
 
   @Override
   public int hashCode() {
-    return appId.hashCode() * host.hashCode() + port;
+    return appId.hashCode() * host.hashCode() * externalId.hashCode() + port;
   }
 
   public ServiceRecord toServiceRecord() {
@@ -88,7 +106,12 @@ public class AMRecord {
     serviceRecord.set(APP_ID_RECORD_KEY, appId);
     serviceRecord.set(HOST_RECORD_KEY, host);
     serviceRecord.set(PORT_RECORD_KEY, port);
+    serviceRecord.set(EXTERNAL_ID_KEY, externalId);
     return serviceRecord;
+  }
+
+  public String toString() {
+    return toServiceRecord().toString();
   }
 
 }

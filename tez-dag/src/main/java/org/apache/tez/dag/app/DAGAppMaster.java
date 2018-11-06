@@ -221,6 +221,7 @@ public class DAGAppMaster extends AbstractService {
   private String appName;
   private final ApplicationAttemptId appAttemptID;
   private final ContainerId containerID;
+  private final String externalId;
   private final String nmHost;
   private final int nmPort;
   private final int nmHttpPort;
@@ -327,13 +328,15 @@ public class DAGAppMaster extends AbstractService {
       ContainerId containerId, String nmHost, int nmPort, int nmHttpPort,
       Clock clock, long appSubmitTime, boolean isSession, String workingDirectory,
       String [] localDirs, String[] logDirs, String clientVersion,
-      Credentials credentials, String jobUserName, AMPluginDescriptorProto pluginDescriptorProto) {
+      Credentials credentials, String jobUserName, AMPluginDescriptorProto pluginDescriptorProto,
+      String externalId) {
     super(DAGAppMaster.class.getName());
     this.clock = clock;
     this.startTime = clock.getTime();
     this.appSubmitTime = appSubmitTime;
     this.appAttemptID = applicationAttemptId;
     this.containerID = containerId;
+    this.externalId = externalId;
     this.nmHost = nmHost;
     this.nmPort = nmPort;
     this.nmHttpPort = nmHttpPort;
@@ -628,7 +631,7 @@ public class DAGAppMaster extends AbstractService {
     execService = MoreExecutors.listeningDecorator(rawExecutor);
 
     AMRegistry amRegistry = AMRegistryUtils.createAMRegistry(conf);
-    initAmRegistry(appAttemptID.getApplicationId(), amRegistry, clientRpcServer);
+    initAmRegistry(appAttemptID.getApplicationId(), externalId, amRegistry, clientRpcServer);
     addIfService(amRegistry, false);
 
     initServices(conf);
@@ -654,12 +657,13 @@ public class DAGAppMaster extends AbstractService {
   }
 
   @VisibleForTesting
-  public static void initAmRegistry(ApplicationId appId, AMRegistry amRegistry, DAGClientServer dagClientServer) throws Exception {
+  public static void initAmRegistry(ApplicationId appId, String externalId, AMRegistry amRegistry, DAGClientServer dagClientServer) throws Exception {
     if(amRegistry != null) {
       dagClientServer.registerServiceListener((service) -> {
         if (service.isInState(STATE.STARTED)) {
           AMRecord amRecord = AMRegistryUtils.recordForDAGClientServer(
               appId,
+              externalId,
               dagClientServer);
           try {
             amRegistry.add(amRecord);
@@ -2403,6 +2407,7 @@ public class DAGAppMaster extends AbstractService {
     try {
       Thread.setDefaultUncaughtExceptionHandler(new YarnUncaughtExceptionHandler());
       final String pid = System.getenv().get("JVM_PID");
+      String externalId = System.getenv(TezConstants.TEZ_AM_EXTERNAL_ID);
       String containerIdStr =
           System.getenv(ApplicationConstants.Environment.CONTAINER_ID.name());
       String nodeHostString = System.getenv(ApplicationConstants.Environment.NM_HOST.name());
@@ -2475,7 +2480,8 @@ public class DAGAppMaster extends AbstractService {
               System.getenv(ApplicationConstants.Environment.PWD.name()),
               TezCommonUtils.getTrimmedStrings(System.getenv(ApplicationConstants.Environment.LOCAL_DIRS.name())),
               TezCommonUtils.getTrimmedStrings(System.getenv(ApplicationConstants.Environment.LOG_DIRS.name())),
-              clientVersion, credentials, jobUserName, amPluginDescriptorProto);
+              clientVersion, credentials, jobUserName, amPluginDescriptorProto,
+              externalId);
       ShutdownHookManager.get().addShutdownHook(
           new DAGAppMasterShutdownHook(appMaster), SHUTDOWN_HOOK_PRIORITY);
 
