@@ -18,18 +18,25 @@
 
 package org.apache.tez.dag.api.client.registry.zookeeper;
 
-import org.apache.tez.dag.api.client.registry.AMRegistry;
+import org.apache.curator.RetryLoop;
+import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.recipes.nodes.PersistentEphemeralNode;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.registry.client.binding.RegistryUtils;
+import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.tez.client.registry.AMRecord;
 import org.apache.tez.client.registry.zookeeper.ZkConfig;
+import org.apache.tez.dag.api.client.registry.AMRegistry;
 import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -44,6 +51,8 @@ public class ZkAMRegistry extends AMRegistry {
   private CuratorFramework client = null;
   private String namespace = null;
   private List<AMRecord> amRecords = new ArrayList<>();
+  private ZkConfig zkConfig = null;
+  private boolean started = false;
 
   public ZkAMRegistry() {
     super("ZkAMRegistry");
@@ -51,21 +60,27 @@ public class ZkAMRegistry extends AMRegistry {
 
   @Override
   public void serviceInit(Configuration conf) {
-    ZkConfig zkConfig = new ZkConfig(conf);
-    this.client = zkConfig.createCuratorFramework();
-    this.namespace = zkConfig.getZkNamespace();
-    LOG.info("AMRegistryZkImpl initialized");
+    if(zkConfig == null) {
+      zkConfig = new ZkConfig(conf);
+      this.client = zkConfig.createCuratorFramework();
+      this.namespace = zkConfig.getZkNamespace();
+      LOG.info("AMRegistryZkImpl initialized");
+    }
   }
 
   @Override public void serviceStart() throws Exception {
-    client.start();
-    LOG.info("AMRegistryZkImpl started");
+    if(!started) {
+      client.start();
+      started = true;
+      LOG.info("AMRegistryZkImpl started");
+    }
   }
 
   //Deletes from Zookeeper AMRecords that were added by this instance
   @Override public void serviceStop() throws Exception {
-    for(AMRecord amRecord : amRecords) {
-      delete(amRecord);
+    List<AMRecord> records = new ArrayList<>(amRecords);
+    for(AMRecord amRecord : records) {
+      remove(amRecord);
     }
     client.close();
     LOG.info("AMRegistryZkImpl shutdown");
@@ -76,23 +91,69 @@ public class ZkAMRegistry extends AMRegistry {
   @Override public void add(AMRecord server) throws Exception {
     RegistryUtils.ServiceRecordMarshal marshal = new RegistryUtils.ServiceRecordMarshal();
     String json = marshal.toJson(server.toServiceRecord());
-    client.
-        create().
-        creatingParentContainersIfNeeded().
-        withMode(CreateMode.EPHEMERAL).
-        forPath(namespace + "/" + server.getApplicationId().toString(),
-            json.getBytes());
+    try {
+      client.setData().forPath(namespace + "/" + server.getApplicationId().toString(), json.getBytes());
+    } catch(KeeperException.NoNodeException nne) {
+      client.create().creatingParentContainersIfNeeded().forPath(namespace + "/" + server.getApplicationId().toString(), json.getBytes());
+    }
     amRecords.add(server);
   }
 
   @Override public void remove(AMRecord server) throws Exception {
     amRecords.remove(server);
-    delete(server);
-  }
-
-  private void delete(AMRecord server) throws Exception {
     client.
         delete().
         forPath(namespace + "/" + server.getApplicationId().toString());
+  }
+
+  @Override
+  public ApplicationId generateNewId() throws Exception {
+    createNamespaceIfNotExists();
+    long namespaceCreationTime = getNamespaceCreationTime();
+
+    boolean success = false;
+    long startTime = System.currentTimeMillis();
+    RetryPolicy retryPolicy = zkConfig.getRetryPolicy();
+    int tryId = 0;
+    for(int i = 0; (i < zkConfig.getCuratorMaxRetries()) && !success; i++) {
+      List<String> children = client.getChildren().forPath(namespace);
+      if((children != null) && (children.size() != 0)) {
+        Collections.sort(children, Collections.reverseOrder());
+        String last = children.get(0);
+        ApplicationId lastAppId = ApplicationId.fromString(last);
+        tryId = lastAppId.getId() + 1;
+      }
+      ApplicationId tryAppId = ApplicationId.newInstance(namespaceCreationTime, tryId);
+      try {
+        client
+            .create()
+            .withMode(CreateMode.EPHEMERAL)
+            .forPath(namespace + "/" + tryAppId.toString(), new byte[0]);
+        success = true;
+      } catch(KeeperException.NodeExistsException nodeExists) {
+        long elapsedTime = System.currentTimeMillis() - startTime;
+        retryPolicy.allowRetry(i + 1, elapsedTime, RetryLoop.getDefaultRetrySleeper());
+        tryId++;
+      }
+    }
+    if(success) {
+      return ApplicationId.newInstance(namespaceCreationTime, tryId);
+    } else {
+      throw new RuntimeException("Could not obtain unique ApplicationId after " +
+          zkConfig.getCuratorMaxRetries() + " tries");
+    }
+  }
+
+  private long getNamespaceCreationTime() throws Exception {
+    Stat stat = client.checkExists().forPath(namespace);
+    return stat.getCtime();
+  }
+
+  private void createNamespaceIfNotExists() throws Exception {
+    try {
+      client.create().creatingParentContainersIfNeeded().forPath(namespace);
+    } catch(KeeperException.NodeExistsException nodeExists) {
+      LOG.info("Namespace already exists, will use existing: {}", namespace);
+    }
   }
 }

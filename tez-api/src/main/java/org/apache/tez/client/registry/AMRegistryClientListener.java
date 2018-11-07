@@ -18,19 +18,7 @@
 
 package org.apache.tez.client.registry;
 
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.List;
-
-/**
- * Interface for client-side AM discovery
- */
-public interface AMRegistryClient extends Closeable {
-  //Get AM info given an appId
-  AMRecord getRecord(String appId) throws IOException;
-
-  //Get all AM infos in the registry
-  List<AMRecord> getAllRecords() throws IOException;
-
-  void addListener(AMRegistryClientListener listener);
+public interface AMRegistryClientListener {
+  void onAdd(AMRecord record);
+  void onRemove(AMRecord record);
 }

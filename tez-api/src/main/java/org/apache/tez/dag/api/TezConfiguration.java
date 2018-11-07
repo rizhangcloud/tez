@@ -2012,6 +2012,24 @@ public class TezConfiguration extends Configuration {
   public static final int TEZ_AM_CURATOR_MAX_RETRIES_DEFAULT = 3;
 
   /**
+   * Integer value (milliseconds)
+   */
+  @ConfigurationScope(Scope.AM)
+  @ConfigurationProperty
+  public static final String TEZ_AM_CURATOR_SESSION_TIMEOUT = TEZ_AM_PREFIX
+      + "curator.session.timeout";
+  public static final int TEZ_AM_CURATOR_SESSION_TIMEOUT_DEFAULT = 60000;
+
+  /**
+    * Integer value (milliseconds)
+  */
+  @ConfigurationScope(Scope.AM)
+  @ConfigurationProperty
+  public static final String TEZ_AM_CURATOR_CONNECTION_TIMEOUT = TEZ_AM_PREFIX
+	    + "curator.connection.timeout";
+  public static final int TEZ_AM_CURATOR_CONNECTION_TIMEOUT_DEFAULT = 15000;
+
+  /**
    * String value. The class to be used for the AM registry.
    */
   @ConfigurationScope(Scope.AM)

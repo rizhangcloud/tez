@@ -119,6 +119,12 @@
       <artifactId>hadoop-yarn-registry</artifactId>
       <version>${hadoop.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.apache.curator</groupId>
+      <artifactId>curator-test</artifactId>
+      <version>${curator.version}</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>

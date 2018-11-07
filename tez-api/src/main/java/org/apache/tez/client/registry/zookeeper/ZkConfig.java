@@ -32,6 +32,8 @@ public class ZkConfig {
   private String zkNamespace;
   private int curatorBackoffSleep;
   private int curatorMaxRetries;
+  private int sessionTimeoutMs;
+  private int connectionTimeoutMs;
 
   public ZkConfig(Configuration conf) {
     zkQuorum = conf.get(TezConfiguration.TEZ_AM_ZOOKEEPER_QUORUM);
@@ -43,6 +45,10 @@ public class ZkConfig {
         TezConfiguration.TEZ_AM_CURATOR_BACKOFF_SLEEP_DEFAULT);
     curatorMaxRetries = conf.getInt(TezConfiguration.TEZ_AM_CURATOR_MAX_RETRIES,
         TezConfiguration.TEZ_AM_CURATOR_MAX_RETRIES_DEFAULT);
+    sessionTimeoutMs = conf.getInt(TezConfiguration.TEZ_AM_CURATOR_SESSION_TIMEOUT,
+        TezConfiguration.TEZ_AM_CURATOR_SESSION_TIMEOUT_DEFAULT);
+    connectionTimeoutMs = conf.getInt(TezConfiguration.TEZ_AM_CURATOR_CONNECTION_TIMEOUT,
+        TezConfiguration.TEZ_AM_CURATOR_CONNECTION_TIMEOUT_DEFAULT);
   }
 
   public String getZkQuorum() {
@@ -61,11 +67,24 @@ public class ZkConfig {
     return curatorMaxRetries;
   }
 
+  public int getSessionTimeoutMs() {
+    return sessionTimeoutMs;
+  }
+
+  public int getConnectionTimeoutMs() {
+    return connectionTimeoutMs;
+  }
+
   public RetryPolicy getRetryPolicy() {
     return new ExponentialBackoffRetry(getCuratorBackoffSleep(), getCuratorMaxRetries());
   }
 
   public CuratorFramework createCuratorFramework() {
-    return CuratorFrameworkFactory.newClient(getZkQuorum(), getRetryPolicy());
+    return CuratorFrameworkFactory.newClient(
+        getZkQuorum(),
+        getSessionTimeoutMs(),
+        getConnectionTimeoutMs(),
+        getRetryPolicy()
+    );
   }
 }

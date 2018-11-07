@@ -310,6 +310,7 @@ public class DAGAppMaster extends AbstractService {
   private final AtomicInteger failedDAGs = new AtomicInteger();
   private final AtomicInteger killedDAGs = new AtomicInteger();
   private ACLManager aclManager;
+  private AMRegistry amRegistry;
 
   // Version checks
   private TezDagVersionInfo dagVersionInfo;
@@ -329,7 +330,7 @@ public class DAGAppMaster extends AbstractService {
       Clock clock, long appSubmitTime, boolean isSession, String workingDirectory,
       String [] localDirs, String[] logDirs, String clientVersion,
       Credentials credentials, String jobUserName, AMPluginDescriptorProto pluginDescriptorProto,
-      String externalId) {
+      String externalId, AMRegistry amRegistry) {
     super(DAGAppMaster.class.getName());
     this.clock = clock;
     this.startTime = clock.getTime();
@@ -337,6 +338,7 @@ public class DAGAppMaster extends AbstractService {
     this.appAttemptID = applicationAttemptId;
     this.containerID = containerId;
     this.externalId = externalId;
+    this.amRegistry = amRegistry;
     this.nmHost = nmHost;
     this.nmPort = nmPort;
     this.nmHttpPort = nmHttpPort;
@@ -433,17 +435,6 @@ public class DAGAppMaster extends AbstractService {
     parseAllPlugins(taskSchedulerDescriptors, taskSchedulers, containerLauncherDescriptors,
         containerLaunchers, taskCommunicatorDescriptors, taskCommunicators, amPluginDescriptorProto,
         isLocal, defaultPayload);
-
-    taskSchedulers.put("LLAP", 1);
-    taskCommunicators.put("LLAP", 1);
-    containerLaunchers.put("LLAP", 1);
-    taskSchedulerDescriptors.add(1, new NamedEntityDescriptor("LLAP", "org.apache.hadoop.hive.llap.tezplugins" +
-      ".LlapTaskSchedulerService").setUserPayload(defaultPayload));
-    containerLauncherDescriptors.add(1, new NamedEntityDescriptor("LLAP", "org.apache.hadoop.hive.llap.tezplugins" +
-      ".LlapContainerLauncher").setUserPayload(defaultPayload));
-    taskCommunicatorDescriptors.add(1, new NamedEntityDescriptor("LLAP", "org.apache.hadoop.hive.llap.tezplugins" +
-      ".LlapTaskCommunicator").setUserPayload(defaultPayload));
-
 
     LOG.info(buildPluginComponentLog(taskSchedulerDescriptors, taskSchedulers, "TaskSchedulers"));
     LOG.info(buildPluginComponentLog(containerLauncherDescriptors, containerLaunchers, "ContainerLaunchers"));
@@ -629,8 +620,9 @@ public class DAGAppMaster extends AbstractService {
     rawExecutor = Executors.newCachedThreadPool(new ThreadFactoryBuilder().setDaemon(true)
         .setNameFormat("App Shared Pool - " + "#%d").build());
     execService = MoreExecutors.listeningDecorator(rawExecutor);
-
-    AMRegistry amRegistry = AMRegistryUtils.createAMRegistry(conf);
+    if(amRegistry == null) {
+      amRegistry = AMRegistryUtils.createAMRegistry(conf);
+    }
     initAmRegistry(appAttemptID.getApplicationId(), externalId, amRegistry, clientRpcServer);
     addIfService(amRegistry, false);
 
@@ -662,9 +654,10 @@ public class DAGAppMaster extends AbstractService {
       dagClientServer.registerServiceListener((service) -> {
         if (service.isInState(STATE.STARTED)) {
           AMRecord amRecord = AMRegistryUtils.recordForDAGClientServer(
-              appId,
-              externalId,
-              dagClientServer);
+            appId,
+            externalId,
+            dagClientServer
+          );
           try {
             amRegistry.add(amRecord);
           } catch (Exception e) {
@@ -2410,6 +2403,10 @@ public class DAGAppMaster extends AbstractService {
       String externalId = System.getenv(TezConstants.TEZ_AM_EXTERNAL_ID);
       String containerIdStr =
           System.getenv(ApplicationConstants.Environment.CONTAINER_ID.name());
+      boolean usingExternalId = false;
+      if((containerIdStr == null) && (externalId != null)) {
+        usingExternalId = true;
+      }
       String nodeHostString = System.getenv(ApplicationConstants.Environment.NM_HOST.name());
       String nodePortString = System.getenv(ApplicationConstants.Environment.NM_PORT.name());
       String nodeHttpPortString =
@@ -2424,9 +2421,31 @@ public class DAGAppMaster extends AbstractService {
       validateInputParam(appSubmitTimeStr,
           ApplicationConstants.APP_SUBMIT_TIME_ENV);
 
-      ContainerId containerId = ConverterUtils.toContainerId(containerIdStr);
-      ApplicationAttemptId applicationAttemptId =
-          containerId.getApplicationAttemptId();
+      // TODO Does this really need to be a YarnConfiguration ?
+      Configuration conf = new Configuration(new YarnConfiguration());
+
+      DAGProtos.ConfigurationProto confProto = null;
+      confProto = TezUtilsInternal.readUserSpecifiedTezConfiguration(System.getenv(ApplicationConstants.Environment.PWD.name()));
+      if(confProto == null) {
+        //If confProto isn't available as protobuf, load XML/JSON resources from CLASSPATH
+        confProto = TezUtilsInternal.loadConfProtoFromText();
+      }
+      TezUtilsInternal.addUserSpecifiedTezConfiguration(conf, confProto.getConfKeyValuesList());
+
+      AMRegistry amRegistry = null;
+      ContainerId containerId = null;
+      ApplicationAttemptId applicationAttemptId = null;
+      if(!usingExternalId) {
+        containerId = ConverterUtils.toContainerId(containerIdStr);
+        applicationAttemptId = containerId.getApplicationAttemptId();
+      } else {
+        amRegistry = AMRegistryUtils.createAMRegistry(conf);
+        amRegistry.init(conf);
+        amRegistry.start();
+        ApplicationId appId = amRegistry.generateNewId();
+        applicationAttemptId = ApplicationAttemptId.newInstance(appId, 0);
+        containerId = ContainerId.newContainerId(applicationAttemptId, 0);
+      }
 
       long appSubmitTime = Long.parseLong(appSubmitTimeStr);
 
@@ -2452,15 +2471,7 @@ public class DAGAppMaster extends AbstractService {
           + ", localDirs=" + System.getenv(ApplicationConstants.Environment.LOCAL_DIRS.name())
           + ", logDirs=" + System.getenv(ApplicationConstants.Environment.LOG_DIRS.name()));
 
-      // TODO Does this really need to be a YarnConfiguration ?
-      Configuration conf = new Configuration(new YarnConfiguration());
 
-      DAGProtos.ConfigurationProto confProto = null;
-      confProto = TezUtilsInternal.readUserSpecifiedTezConfiguration(System.getenv(ApplicationConstants.Environment.PWD.name()));
-      if(confProto == null) {
-        //If confProto isn't available as protobuf, load XML/JSON resources from CLASSPATH
-        confProto = TezUtilsInternal.loadConfProtoFromText();
-      }
 
       AMPluginDescriptorProto amPluginDescriptorProto = null;
       if (confProto.hasAmPluginDescriptor()) {
@@ -2481,7 +2492,7 @@ public class DAGAppMaster extends AbstractService {
               TezCommonUtils.getTrimmedStrings(System.getenv(ApplicationConstants.Environment.LOCAL_DIRS.name())),
               TezCommonUtils.getTrimmedStrings(System.getenv(ApplicationConstants.Environment.LOG_DIRS.name())),
               clientVersion, credentials, jobUserName, amPluginDescriptorProto,
-              externalId);
+              externalId, amRegistry);
       ShutdownHookManager.get().addShutdownHook(
           new DAGAppMasterShutdownHook(appMaster), SHUTDOWN_HOOK_PRIORITY);
 

@@ -18,7 +18,9 @@
 
 package org.apache.tez.dag.api.client.registry;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.service.AbstractService;
+import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.tez.client.registry.AMRecord;
 
 /**
@@ -32,6 +34,24 @@ import org.apache.tez.client.registry.AMRecord;
  *  serviceStop will invoked on DAGAppMaster shutdown
  */
 public abstract class AMRegistry extends AbstractService {
+
+  @Override
+  public void init(Configuration conf) {
+    try {
+      this.serviceInit(conf);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  @Override
+  public void start() {
+    try {
+      this.serviceStart();
+    } catch(Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
 
   /* Implementations should provide a public no-arg constructor */
   protected AMRegistry(String name) {
@@ -47,5 +67,12 @@ public abstract class AMRegistry extends AbstractService {
     Under typical usage, implementations should remove any stale AMRecords upon serviceStop
    */
   public abstract void remove(AMRecord server) throws Exception;
+
+  //Optional
+  public ApplicationId generateNewId() throws Exception {
+    throw new UnsupportedOperationException(String.format(
+        "%s does not support generateNewId() operation", getClass().getName()
+    ));
+  }
 
 }
