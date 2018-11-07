@@ -503,6 +503,15 @@ public class TezRuntimeConfiguration {
       TEZ_RUNTIME_PREFIX + "enable.final-merge.in.output";
   public static final boolean TEZ_RUNTIME_ENABLE_FINAL_MERGE_IN_OUTPUT_DEFAULT = true;
 
+  /**
+   * Expert level setting. How long should @link{ShuffleManager} wait for batching
+   * before sending the events in milliseconds. Set to -1 to not wait.
+   */
+  @ConfigurationProperty(type = "integer")
+  public static final String  TEZ_RUNTIME_SHUFFLE_BATCH_WAIT =
+      TEZ_RUNTIME_PREFIX + "shuffle.batch.wait";
+  public static final int TEZ_RUNTIME_SHUFFLE_BATCH_WAIT_DEFAULT = 1;
+
 
   /**
    * Share data fetched between tasks running on the same host if applicable
@@ -609,6 +618,7 @@ public class TezRuntimeConfiguration {
     tezRuntimeKeys.add(TEZ_RUNTIME_CLEANUP_FILES_ON_INTERRUPT);
     tezRuntimeKeys.add(TEZ_RUNTIME_UNORDERED_PARTITIONED_KVWRITER_BUFFER_MERGE_PERCENT);
     tezRuntimeKeys.add(TEZ_RUNTIME_SHUFFLE_FETCHER_USE_SHARED_POOL);
+    tezRuntimeKeys.add(TEZ_RUNTIME_SHUFFLE_BATCH_WAIT);
 
     defaultConf.addResource("core-default.xml");
     defaultConf.addResource("core-site.xml");

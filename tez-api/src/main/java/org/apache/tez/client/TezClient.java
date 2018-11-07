@@ -37,11 +37,10 @@ import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.tez.common.JavaOptsChecker;
-import org.apache.tez.common.RPCUtil;
-import org.apache.tez.common.TezCommonUtils;
+import org.apache.tez.common.*;
 import org.apache.tez.common.counters.Limits;
 import org.apache.tez.dag.api.TezConfigurationConstants;
+import org.apache.tez.dag.api.TezReflectionException;
 import org.apache.tez.serviceplugins.api.ServicePluginsDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +59,6 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.exceptions.ApplicationNotFoundException;
 import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.util.Time;
-import org.apache.tez.common.ReflectionUtils;
 import org.apache.tez.common.security.JobTokenSecretManager;
 import org.apache.tez.dag.api.DAG;
 import org.apache.tez.dag.api.DAGSubmissionTimedOut;
@@ -331,7 +329,7 @@ public class TezClient {
     }
     amConfig.addAMLocalResources(localFiles);
   }
-  
+
   /**
    * If the next DAG App Master needs different local files, then use this
    * method to clear the local files and then add the new local files
@@ -387,17 +385,17 @@ public class TezClient {
     if (isSession) {
       LOG.info("Session mode. Starting session.");
       TezClientUtils.processTezLocalCredentialsFile(sessionCredentials,
-          amConfig.getTezConfiguration());
-  
+        amConfig.getTezConfiguration());
+
       clientTimeout = amConfig.getTezConfiguration().getInt(
-          TezConfiguration.TEZ_SESSION_CLIENT_TIMEOUT_SECS,
-          TezConfiguration.TEZ_SESSION_CLIENT_TIMEOUT_SECS_DEFAULT);
-  
+        TezConfiguration.TEZ_SESSION_CLIENT_TIMEOUT_SECS,
+        TezConfiguration.TEZ_SESSION_CLIENT_TIMEOUT_SECS_DEFAULT);
+
       try {
         if (sessionAppId == null) {
           sessionAppId = createApplication();
         }
-  
+
         ApplicationSubmissionContext appContext = setupApplicationContext();
         frameworkClient.submitApplication(appContext);
         ApplicationReport appReport = frameworkClient.getApplicationReport(sessionAppId);
@@ -461,7 +459,9 @@ public class TezClient {
   }
 
   private void startFrameworkClient() {
-    frameworkClient = createFrameworkClient();
+    if (frameworkClient == null) {
+      frameworkClient = createFrameworkClient();
+    }
     frameworkClient.init(amConfig.getTezConfiguration(), amConfig.getYarnConfiguration());
     frameworkClient.start();
   }
@@ -622,10 +622,10 @@ public class TezClient {
   }
   
   private DAGClient submitDAGSession(DAG dag) throws TezException, IOException {
-    Preconditions.checkState(isSession == true, 
-        "submitDAG with additional resources applies to only session mode. " + 
+    Preconditions.checkState(isSession == true,
+        "submitDAG with additional resources applies to only session mode. " +
         "In non-session mode please specify all resources in the initial configuration");
-    
+
     verifySessionStateForSubmission();
 
     String dagId = null;
@@ -638,7 +638,7 @@ public class TezClient {
       + ", applicationId=" + sessionAppId
       + ", dagName=" + dag.getName()
       + callerContextStr);
-    
+
     if (!additionalLocalResources.isEmpty()) {
       for (LocalResource lr : additionalLocalResources.values()) {
         Preconditions.checkArgument(lr.getType() == LocalResourceType.FILE, "LocalResourceType: "
@@ -647,6 +647,8 @@ public class TezClient {
     }
 
     Map<String, LocalResource> tezJarResources = getTezJarResources(sessionCredentials);
+
+
     DAGPlan dagPlan = TezClientUtils.prepareAndCreateDAGPlan(dag, amConfig, tezJarResources,
         usingTezArchiveDeploy, sessionCredentials, servicePluginsDescriptor, javaOptsChecker);
 
@@ -661,6 +663,7 @@ public class TezClient {
 
     // if request size exceeds maxSubmitDAGRequestSizeThroughIPC, we serialize them to HDFS
     SubmitDAGRequestProto request = requestBuilder.build();
+
     if (request.getSerializedSize() > maxSubmitDAGRequestSizeThroughIPC) {
       Path dagPlanPath = new Path(TezCommonUtils.getTezSystemStagingPath(amConfig.getTezConfiguration(),
           sessionAppId.toString()), TezConstants.TEZ_PB_PLAN_BINARY_NAME +
@@ -1126,7 +1129,7 @@ public class TezClient {
           + ", applicationId=" + appId
           + ", dagName=" + dag.getName()
           + callerContextStr);
-      
+
       frameworkClient.submitApplication(appContext);
       ApplicationReport appReport = frameworkClient.getApplicationReport(appId);
       LOG.info("The url to track the Tez AM: " + appReport.getTrackingUrl());

@@ -45,7 +45,7 @@ import com.google.common.base.Strings;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.math3.util.Precision;
-import org.apache.tez.common.JavaOptsChecker;
+import org.apache.tez.common.*;
 import org.apache.tez.dag.api.records.DAGProtos.AMPluginDescriptorProto;
 import org.apache.tez.serviceplugins.api.ServicePluginsDescriptor;
 import org.codehaus.jackson.annotate.JsonMethod;
@@ -89,9 +89,6 @@ import org.apache.hadoop.yarn.security.client.ClientToAMTokenIdentifier;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.Records;
 import org.apache.log4j.Level;
-import org.apache.tez.common.TezCommonUtils;
-import org.apache.tez.common.TezYARNUtils;
-import org.apache.tez.common.VersionInfo;
 import org.apache.tez.common.security.ACLManager;
 import org.apache.tez.common.security.JobTokenIdentifier;
 import org.apache.tez.common.security.JobTokenSecretManager;
@@ -140,7 +137,7 @@ public class TezClientUtils {
     FileSystem fs = p.getFileSystem(conf);
     p = fs.resolvePath(p.makeQualified(fs.getUri(),
         fs.getWorkingDirectory()));
-    FileSystem targetFS = p.getFileSystem(conf); 
+    FileSystem targetFS = p.getFileSystem(conf);
     if (targetFS.isDirectory(p)) {
       return targetFS.listStatus(p);
     } else {
@@ -151,7 +148,7 @@ public class TezClientUtils {
 
   /**
    * Setup LocalResource map for Tez jars based on provided Configuration
-   * 
+   *
    * @param conf
    *          Configuration to use to access Tez jars' locations
    * @param credentials
@@ -168,7 +165,7 @@ public class TezClientUtils {
     boolean usingTezArchive = false;
 
     if (conf.getBoolean(TezConfiguration.TEZ_IGNORE_LIB_URIS, false)){
-      LOG.info("Ignoring '" + TezConfiguration.TEZ_LIB_URIS + "' since  '" + 
+      LOG.info("Ignoring '" + TezConfiguration.TEZ_LIB_URIS + "' since  '" +
             TezConfiguration.TEZ_IGNORE_LIB_URIS + "' is set to true");
     } else {
       // Add tez jars to local resource

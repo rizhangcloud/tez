@@ -569,7 +569,6 @@ class TestTaskSchedulerHelpers {
       throw new TezUncheckedException(e);
     }
     when(mockContext.getInitialUserPayload()).thenReturn(userPayload);
-    when(mockContext.isSession()).thenReturn(isSession);
     if (containerSignatureMatcher != null) {
       when(mockContext.getContainerSignatureMatcher())
           .thenReturn(containerSignatureMatcher);
