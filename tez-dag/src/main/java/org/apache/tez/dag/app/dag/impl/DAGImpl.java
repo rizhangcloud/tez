@@ -1544,20 +1544,20 @@ public class DAGImpl implements org.apache.tez.dag.app.dag.DAG,
     }
 
     // check task resources, only check it in non-local mode
-//    if (!appContext.isLocal()) {
-//      for (Vertex v : vertexMap.values()) {
-//        // TODO TEZ-2003 (post) TEZ-2624 Ideally, this should be per source.
-//        if (v.getTaskResource().compareTo(appContext.getClusterInfo().getMaxContainerCapability()) > 0) {
-//          String msg = "Vertex's TaskResource is beyond the cluster container capability," +
-//              "Vertex=" + v.getLogIdentifier() +", Requested TaskResource=" + v.getTaskResource()
-//              + ", Cluster MaxContainerCapability=" + appContext.getClusterInfo().getMaxContainerCapability();
-//          LOG.error(msg);
-//          addDiagnostic(msg);
-//          finished(DAGState.FAILED);
-//          return DAGState.FAILED;
-//        }
-//      }
-//    }
+    if (!appContext.isLocal() && !appContext.isStandalone()) {
+      for (Vertex v : vertexMap.values()) {
+        // TODO TEZ-2003 (post) TEZ-2624 Ideally, this should be per source.
+        if (v.getTaskResource().compareTo(appContext.getClusterInfo().getMaxContainerCapability()) > 0) {
+          String msg = "Vertex's TaskResource is beyond the cluster container capability," +
+              "Vertex=" + v.getLogIdentifier() +", Requested TaskResource=" + v.getTaskResource()
+              + ", Cluster MaxContainerCapability=" + appContext.getClusterInfo().getMaxContainerCapability();
+          LOG.error(msg);
+          addDiagnostic(msg);
+          finished(DAGState.FAILED);
+          return DAGState.FAILED;
+        }
+      }
+    }
 
     try {
       createDAGEdges(this);

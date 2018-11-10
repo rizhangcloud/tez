@@ -254,6 +254,7 @@ public class DAGAppMaster extends AbstractService {
   private String containerLogs;
 
   private boolean isLocal = false; //Local mode flag
+  private boolean isStandalone = false;
 
   // Timeout interval which if set will cause a running
   // DAG to be killed and AM shutdown if the client has not
@@ -332,6 +333,9 @@ public class DAGAppMaster extends AbstractService {
       Credentials credentials, String jobUserName, AMPluginDescriptorProto pluginDescriptorProto,
       String externalId, AMRegistry amRegistry) {
     super(DAGAppMaster.class.getName());
+    if(amRegistry != null) {
+      isStandalone = true;
+    }
     this.clock = clock;
     this.startTime = clock.getTime();
     this.appSubmitTime = appSubmitTime;
@@ -1647,6 +1651,10 @@ public class DAGAppMaster extends AbstractService {
     @Override
     public boolean isLocal() {
       return isLocal;
+    }
+
+    @Override public boolean isStandalone() {
+      return isStandalone;
     }
 
     @Override
