@@ -438,7 +438,7 @@ public class DAGAppMaster extends AbstractService {
 
     parseAllPlugins(taskSchedulerDescriptors, taskSchedulers, containerLauncherDescriptors,
         containerLaunchers, taskCommunicatorDescriptors, taskCommunicators, amPluginDescriptorProto,
-        isLocal, defaultPayload);
+        isLocal, isStandalone, defaultPayload);
 
     LOG.info(buildPluginComponentLog(taskSchedulerDescriptors, taskSchedulers, "TaskSchedulers"));
     LOG.info(buildPluginComponentLog(containerLauncherDescriptors, containerLaunchers, "ContainerLaunchers"));
@@ -2719,7 +2719,7 @@ public class DAGAppMaster extends AbstractService {
       List<NamedEntityDescriptor> taskSchedulerDescriptors, BiMap<String, Integer> taskSchedulerPluginMap,
       List<NamedEntityDescriptor> containerLauncherDescriptors, BiMap<String, Integer> containerLauncherPluginMap,
       List<NamedEntityDescriptor> taskCommDescriptors, BiMap<String, Integer> taskCommPluginMap,
-      AMPluginDescriptorProto amPluginDescriptorProto, boolean isLocal, UserPayload defaultPayload) {
+      AMPluginDescriptorProto amPluginDescriptorProto, boolean isLocal, boolean isStandalone, UserPayload defaultPayload) {
 
     boolean tezYarnEnabled;
     boolean uberEnabled;
@@ -2741,7 +2741,7 @@ public class DAGAppMaster extends AbstractService {
             null :
             amPluginDescriptorProto.getTaskSchedulersList()),
         tezYarnEnabled, uberEnabled, defaultPayload);
-    processSchedulerDescriptors(taskSchedulerDescriptors, isLocal, defaultPayload, taskSchedulerPluginMap);
+    processSchedulerDescriptors(taskSchedulerDescriptors, isLocal, isStandalone, defaultPayload, taskSchedulerPluginMap);
 
     parsePlugin(containerLauncherDescriptors, containerLauncherPluginMap,
         (amPluginDescriptorProto == null ||
@@ -2798,7 +2798,7 @@ public class DAGAppMaster extends AbstractService {
   }
 
   @VisibleForTesting
-  static void processSchedulerDescriptors(List<NamedEntityDescriptor> descriptors, boolean isLocal,
+  static void processSchedulerDescriptors(List<NamedEntityDescriptor> descriptors, boolean isLocal, boolean isStandalone,
                                           UserPayload defaultPayload,
                                           BiMap<String, Integer> schedulerPluginMap) {
     if (isLocal) {
@@ -2810,7 +2810,7 @@ public class DAGAppMaster extends AbstractService {
         }
       }
       Preconditions.checkState(foundUberServiceName);
-    } else {
+    } else if(!isStandalone) {
       boolean foundYarn = false;
       for (int i = 0; i < descriptors.size(); i++) {
         if (descriptors.get(i).getEntityName().equals(TezConstants.getTezYarnServicePluginName())) {
