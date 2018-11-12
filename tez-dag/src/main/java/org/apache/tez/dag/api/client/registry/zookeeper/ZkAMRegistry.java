@@ -94,7 +94,7 @@ public class ZkAMRegistry extends AMRegistry {
     try {
       client.setData().forPath(namespace + "/" + server.getApplicationId().toString(), json.getBytes());
     } catch(KeeperException.NoNodeException nne) {
-      client.create().creatingParentContainersIfNeeded().forPath(namespace + "/" + server.getApplicationId().toString(), json.getBytes());
+      client.create().creatingParentContainersIfNeeded().withMode(CreateMode.EPHEMERAL).forPath(namespace + "/" + server.getApplicationId().toString(), json.getBytes());
     }
     amRecords.add(server);
   }
