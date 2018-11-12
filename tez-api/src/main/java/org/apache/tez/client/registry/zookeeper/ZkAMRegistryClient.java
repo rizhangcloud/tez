@@ -137,7 +137,11 @@ public class ZkAMRegistryClient implements AMRegistryClient {
         }
         break;
       default:
-        LOG.info("Ignored event {} for {}", event.getType(), childData.getPath());
+        if(childData != null) {
+          LOG.info("Ignored event {}", event.getType());
+        } else {
+          LOG.info("Ignored event {} for {}", event.getType(), childData.getPath());
+        }
       }
     }
 
