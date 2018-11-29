@@ -72,6 +72,7 @@ import org.apache.hadoop.util.ShutdownHookManager;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
 import org.apache.hadoop.yarn.api.records.Resource;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
+import org.apache.hadoop.yarn.security.AMRMTokenIdentifier;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.tez.client.registry.AMRecord;
@@ -2696,8 +2697,24 @@ public class DAGAppMaster extends AbstractService {
     // the objects myself.
     conf.setBoolean("fs.automatic.close", false);
     Limits.setConfiguration(conf);
-    appMaster.init(conf);
-    appMaster.start();
+
+    // Now remove the AM->RM token so tasks don't have it
+    Iterator<Token<?>> iter = appMaster.amCredentials.getAllTokens().iterator();
+    while (iter.hasNext()) {
+      Token<?> token = iter.next();
+      if (token.getKind().equals(AMRMTokenIdentifier.KIND_NAME)) {
+        iter.remove();
+      }
+    }
+
+    appMaster.appMasterUgi.doAs(new PrivilegedExceptionAction<Object>() {
+      @Override
+      public Object run() throws Exception {
+        appMaster.init(conf);
+        appMaster.start();
+        return null;
+      }
+    });
   }
 
   @SuppressWarnings("unchecked")
