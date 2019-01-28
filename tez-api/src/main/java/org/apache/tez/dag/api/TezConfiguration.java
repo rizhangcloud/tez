@@ -1108,15 +1108,6 @@ public class TezConfiguration extends Configuration {
   public static final boolean TEZ_AM_HISTORY_LOGGING_ENABLED_DEFAULT = true;
 
   /**
-   * Boolean value. Use a new file per-event for app/manifest logging in proto-logger
-   */
-  @Private
-  @ConfigurationScope(Scope.AM)
-  public static final String TEZ_AM_HISTORY_LOGGING_FILE_PER_EVENT =
-      TEZ_AM_PREFIX + "history.logging.file-per-event";
-  public static final boolean TEZ_AM_HISTORY_LOGGING_FILE_PER_EVENT_DEFAULT = false;
-
-  /**
    * Int value. Specifies the percentage of tasks eligible to be preempted that
    * will actually be preempted in a given round of Tez internal preemption.
    * This slows down preemption and gives more time for free resources to be

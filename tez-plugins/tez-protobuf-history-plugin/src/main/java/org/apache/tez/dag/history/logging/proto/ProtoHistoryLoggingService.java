@@ -61,10 +61,8 @@ public class ProtoHistoryLoggingService extends HistoryLoggingService {
   private LocalDate manifestDate;
   private TezDAGID currentDagId;
   private long dagSubmittedEventOffset = -1;
-  private int appLogFileCount = 0;
-  private int manifestLogFileCount = 0;
-  private boolean eventPerFile;
 
+  private String appEventsFile;
   private long appLaunchedEventOffset;
 
   public ProtoHistoryLoggingService() {
@@ -77,8 +75,6 @@ public class ProtoHistoryLoggingService extends HistoryLoggingService {
     setConfig(conf);
     loggingDisabled = !conf.getBoolean(TezConfiguration.TEZ_AM_HISTORY_LOGGING_ENABLED,
         TezConfiguration.TEZ_AM_HISTORY_LOGGING_ENABLED_DEFAULT);
-    eventPerFile = conf.getBoolean(TezConfiguration.TEZ_AM_HISTORY_LOGGING_FILE_PER_EVENT,
-        TezConfiguration.TEZ_AM_HISTORY_LOGGING_FILE_PER_EVENT_DEFAULT);
     LOG.info("Inited ProtoHistoryLoggingService");
   }
 
@@ -95,7 +91,6 @@ public class ProtoHistoryLoggingService extends HistoryLoggingService {
       }
       appEventsWriter = loggers.getAppEventsLogger().getWriter(
           appContext.getApplicationAttemptId().toString());
-      LOG.info("Get App Writer: {}", appEventsWriter.getPath().toString());
       eventHandlingThread = new Thread(this::loop, "HistoryEventHandlingThread");
       eventHandlingThread.start();
     }
@@ -107,14 +102,8 @@ public class ProtoHistoryLoggingService extends HistoryLoggingService {
     LOG.info("Stopping ProtoHistoryLoggingService, eventQueueBacklog=" + eventQueue.size());
     stopped.set(true);
     eventHandlingThread.join();
-    String appEventsWriterPath = (appEventsWriter == null) ? "null" : appEventsWriter.getPath().toString();
-    LOG.info("Closing App Writer: {}", appEventsWriterPath);
     IOUtils.closeQuietly(appEventsWriter);
-    String dagEventsWriterPath = (dagEventsWriter == null) ? "null" : dagEventsWriter.getPath().toString();
-    LOG.info("Closing DAG Writer: {}", dagEventsWriterPath);
     IOUtils.closeQuietly(dagEventsWriter);
-    String manifestEventsWriterPath = (manifestEventsWriter == null) ? "null" : manifestEventsWriter.getPath().toString();
-    LOG.info("Closing Manifest Writer: {}", manifestEventsWriterPath);
     IOUtils.closeQuietly(manifestEventsWriter);
     LOG.info("Stopped ProtoHistoryLoggingService");
   }
@@ -164,6 +153,7 @@ public class ProtoHistoryLoggingService extends HistoryLoggingService {
     HistoryEvent historyEvent = event.getHistoryEvent();
     if (event.getDagID() == null) {
       if (historyEvent.getEventType() == HistoryEventType.APP_LAUNCHED) {
+        appEventsFile = appEventsWriter.getPath().toString();
         appLaunchedEventOffset = appEventsWriter.getOffset();
       }
       appEventsWriter.writeProto(converter.convert(historyEvent));
@@ -177,7 +167,6 @@ public class ProtoHistoryLoggingService extends HistoryLoggingService {
         currentDagId = dagId;
         dagEventsWriter = loggers.getDagEventsLogger().getWriter(dagId.toString()
             + "_" + appContext.getApplicationAttemptId().getAttemptId());
-        LOG.info("Get DAG Writer: {}", dagEventsWriter.getPath().toString());
         dagSubmittedEventOffset = dagEventsWriter.getOffset();
         dagEventsWriter.writeProto(converter.convert(historyEvent));
       } else if (dagEventsWriter != null) {
@@ -199,12 +188,9 @@ public class ProtoHistoryLoggingService extends HistoryLoggingService {
       DatePartitionedLogger<ManifestEntryProto> manifestLogger = loggers.getManifestEventsLogger();
       if (manifestDate == null || !manifestDate.equals(manifestLogger.getNow().toLocalDate())) {
         // The day has changed write to a new file.
-        String manifestEventsWriterPath = (manifestEventsWriter == null) ? "null" : manifestEventsWriter.getPath().toString();
-        LOG.info("Closing Manifest Writer: {}", manifestEventsWriterPath);
         IOUtils.closeQuietly(manifestEventsWriter);
         manifestEventsWriter = manifestLogger.getWriter(
             appContext.getApplicationAttemptId().toString());
-        LOG.info("Get Manifest Writer: {}", manifestEventsWriter.getPath().toString());
         manifestDate = manifestLogger.getDateFromDir(
             manifestEventsWriter.getPath().getParent().getName());
       }
@@ -214,37 +200,15 @@ public class ProtoHistoryLoggingService extends HistoryLoggingService {
           .setDagSubmittedEventOffset(dagSubmittedEventOffset)
           .setDagFinishedEventOffset(finishEventOffset)
           .setDagFilePath(dagEventsWriter.getPath().toString())
-          .setAppFilePath(appEventsWriter.getPath().toString())
+          .setAppFilePath(appEventsFile)
           .setAppLaunchedEventOffset(appLaunchedEventOffset)
           .setWriteTime(System.currentTimeMillis());
       if (event != null) {
         entry.setDagId(event.getDagID().toString());
       }
       manifestEventsWriter.writeProto(entry.build());
-      if(!eventPerFile) {
-        manifestEventsWriter.hflush();
-        appEventsWriter.hflush();
-      } else {
-        manifestLogFileCount++;
-        //If log didn't roll from date, close manifest writer to output file
-        String manifestEventsWriterPath = (manifestEventsWriter == null) ? "null" : manifestEventsWriter.getPath().toString();
-        LOG.info("Closing Manifest Writer: {}", manifestEventsWriterPath);
-        IOUtils.closeQuietly(manifestEventsWriter);
-        //Make new manifestEventsWriter for future DAGs
-        manifestEventsWriter = manifestLogger.getWriter(appContext.getApplicationAttemptId().toString() + "_" + manifestLogFileCount);
-        LOG.info("Get Manifest Writer: {}", manifestEventsWriter.getPath().toString());
-        //Date comes from parent folder
-        manifestDate = manifestLogger.getDateFromDir(manifestEventsWriter.getPath().getParent().getName());
-        //Close app writer to output file
-        String appEventsWriterPath = (appEventsWriter == null) ? "null" : appEventsWriter.getPath().toString();
-        LOG.info("Closing App Writer: {}", appEventsWriterPath);
-        IOUtils.closeQuietly(appEventsWriter);
-        //Make new appEventsWriter for future DAGs
-        appLogFileCount++;
-        appEventsWriter = loggers.getAppEventsLogger().getWriter(
-            appContext.getApplicationAttemptId().toString() + "_" + appLogFileCount);
-        LOG.info("Get App Writer: {}", appEventsWriter.getPath().toString());
-      }
+      manifestEventsWriter.hflush();
+      appEventsWriter.hflush();
     } finally {
       // On an error, cleanup everything this will ensure, we do not use one dag's writer
       // into another dag.
