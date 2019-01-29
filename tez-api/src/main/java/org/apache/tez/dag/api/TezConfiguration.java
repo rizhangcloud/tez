@@ -52,7 +52,6 @@ import com.google.common.annotations.VisibleForTesting;
 public class TezConfiguration extends Configuration {
 
   public final static String TEZ_SITE_XML = "tez-site.xml";
-  public final static String SERVICE_PLUGINS_DESCRIPTOR_JSON = "service_plugins_descriptor.json";
 
   private final static Logger LOG = LoggerFactory.getLogger(TezConfiguration.class);
 
@@ -150,11 +149,6 @@ public class TezConfiguration extends Configuration {
       "shuffle.auxiliary-service.id";
   public static final String TEZ_AM_SHUFFLE_AUXILIARY_SERVICE_ID_DEFAULT =
       TezConstants.TEZ_SHUFFLE_HANDLER_SERVICE_ID;
-
-  @ConfigurationScope(Scope.AM)
-  @ConfigurationProperty
-  public static final String TEZ_AM_CUSTOM_FRAMEWORK_CLIENT_CLASS = TEZ_AM_PREFIX +
-      "custom.framework.client.class";
 
   /**
    * String value. Specifies a directory where Tez can create temporary job artifacts.
@@ -1879,14 +1873,6 @@ public class TezConfiguration extends Configuration {
   public static final String TEZ_AM_DELETION_TRACKER_CLASS_DEFAULT =
       "org.apache.tez.dag.app.launcher.DeletionTrackerImpl";
 
-  @ConfigurationScope(Scope.AM)
-  @ConfigurationProperty
-  public static final String TEZ_AM_PLATFORM_CLIENT_CLASS =
-      TEZ_AM_PREFIX + "platform.client.class";
-
-  public static final String TEZ_AM_PLATFORM_CLIENT_CLASS_DEFAULT =
-      "org.apache.tez.client.YarnPlatformClient";
-
   /**
    * Boolean value. Default false.
    * By default, configured values for the Summary Entity Types for Timeline will
@@ -1966,19 +1952,6 @@ public class TezConfiguration extends Configuration {
   public static final int TEZ_SHARED_EXECUTOR_MAX_THREADS_DEFAULT = -1;
 
   /**
-   * String value. The class to be used for the FrameworkClient.
-   *
-   * if tez.local.mode=true, then org.apache.tez.client.LocalClient will be used
-   * else if tez.am.framework.client.class != null, then tez.am.framework.client.class will be used
-   * else org.apache.tez.client.TezYarnClient will be used
-   *
-   * Expert level setting.
-   */
-  @ConfigurationScope(Scope.AM)
-  @ConfigurationProperty
-  public static final String TEZ_AM_FRAMEWORK_CLIENT_CLASS = TEZ_AM_PREFIX + "framework.client.class";
-
-  /**
    * String value
    */
   @ConfigurationScope(Scope.AM)
@@ -2031,12 +2004,16 @@ public class TezConfiguration extends Configuration {
 	    + "curator.connection.timeout";
   public static final int TEZ_AM_CURATOR_CONNECTION_TIMEOUT_DEFAULT = 15000;
 
+  @ConfigurationProperty
+  public static final String TEZ_FRAMEWORK_MODE =
+      TEZ_PREFIX + ".framework.mode";
+
   /**
-   * String value. The class to be used for the AM registry.
+   * List of additional hadoop config files to load from CLASSPATH in ZOOKEEPER_STANDALONE framework mode
    */
   @ConfigurationScope(Scope.AM)
   @ConfigurationProperty
-  public static final String TEZ_AM_REGISTRY_CLASS = TEZ_AM_PREFIX + "registry.class";
-
+  public static final String TEZ_AM_STANDALONE_CONFS =
+      TEZ_AM_PREFIX + "standalone.confs";
 
 }

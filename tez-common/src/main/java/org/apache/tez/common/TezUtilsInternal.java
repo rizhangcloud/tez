@@ -25,6 +25,7 @@ import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashSet;
 import java.util.List;
@@ -96,14 +97,22 @@ public class TezUtilsInternal {
 
   public static Configuration readTezConfigurationXml(InputStream is) throws IOException {
     Configuration configuration = new Configuration();
-    configuration.addResource(is);
+    if(is != null) {
+      configuration.addResource(is);
+    }
     return configuration;
   }
 
   public static ConfigurationProto loadConfProtoFromText() throws IOException {
     try(InputStream cis = ClassLoader.getSystemResourceAsStream(TezConfiguration.TEZ_SITE_XML);
-      InputStream sis = ClassLoader.getSystemResourceAsStream(TezConfiguration.SERVICE_PLUGINS_DESCRIPTOR_JSON)) {
+        InputStream sis = ClassLoader.getSystemResourceAsStream(TezConstants.SERVICE_PLUGINS_DESCRIPTOR_JSON)) {
       Configuration confFromXml = TezUtilsInternal.readTezConfigurationXml(cis);
+      for(String confFile : confFromXml.getTrimmedStringCollection(TezConfiguration.TEZ_AM_STANDALONE_CONFS)) {
+        try(InputStream additionalInput = ClassLoader.getSystemResourceAsStream(confFile)) {
+          Configuration additionalConfFromXml = TezUtilsInternal.readTezConfigurationXml(additionalInput);
+          confFromXml.addResource(additionalConfFromXml);
+        }
+      }
       ServicePluginsDescriptor pluginsDescriptor = TezClientUtils.createPluginsDescriptorFromJSON(sis);
       return TezClientUtils.createFinalConfProtoForApp(confFromXml, pluginsDescriptor);
     }

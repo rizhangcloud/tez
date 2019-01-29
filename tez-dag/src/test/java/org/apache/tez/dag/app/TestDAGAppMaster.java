@@ -230,7 +230,7 @@ public class TestDAGAppMaster {
     tcDescriptors = Lists.newLinkedList();
     tcMap = HashBiMap.create();
     DAGAppMaster.parseAllPlugins(tsDescriptors, tsMap, clDescriptors, clMap, tcDescriptors, tcMap,
-        null, false, false, defaultPayload);
+        null, false, defaultPayload);
     verifyDescAndMap(tsDescriptors, tsMap, 1, true, TezConstants.getTezYarnServicePluginName());
     verifyDescAndMap(clDescriptors, clMap, 1, true, TezConstants.getTezYarnServicePluginName());
     verifyDescAndMap(tcDescriptors, tcMap, 1, true, TezConstants.getTezYarnServicePluginName());
@@ -243,7 +243,7 @@ public class TestDAGAppMaster {
     tcDescriptors = Lists.newLinkedList();
     tcMap = HashBiMap.create();
     DAGAppMaster.parseAllPlugins(tsDescriptors, tsMap, clDescriptors, clMap, tcDescriptors, tcMap,
-        null, true, false, defaultPayload);
+        null, true, defaultPayload);
     verifyDescAndMap(tsDescriptors, tsMap, 1, true, TezConstants.getTezUberServicePluginName());
     verifyDescAndMap(clDescriptors, clMap, 1, true, TezConstants.getTezUberServicePluginName());
     verifyDescAndMap(tcDescriptors, tcMap, 1, true, TezConstants.getTezUberServicePluginName());
@@ -275,7 +275,7 @@ public class TestDAGAppMaster {
     tcDescriptors = Lists.newLinkedList();
     tcMap = HashBiMap.create();
     DAGAppMaster.parseAllPlugins(tsDescriptors, tsMap, clDescriptors, clMap, tcDescriptors, tcMap,
-        proto, false, false, defaultPayload);
+        proto, false, defaultPayload);
     verifyDescAndMap(tsDescriptors, tsMap, 2, true, TS_NAME,
         TezConstants.getTezYarnServicePluginName());
     verifyDescAndMap(clDescriptors, clMap, 1, true, CL_NAME);
@@ -311,7 +311,7 @@ public class TestDAGAppMaster {
     tcDescriptors = Lists.newLinkedList();
     tcMap = HashBiMap.create();
     DAGAppMaster.parseAllPlugins(tsDescriptors, tsMap, clDescriptors, clMap, tcDescriptors, tcMap,
-        proto, false, false, defaultPayload);
+        proto, false, defaultPayload);
     verifyDescAndMap(tsDescriptors, tsMap, 2, true, TezConstants.getTezYarnServicePluginName(),
         TS_NAME);
     verifyDescAndMap(clDescriptors, clMap, 2, true, TezConstants.getTezYarnServicePluginName(),
@@ -428,7 +428,7 @@ public class TestDAGAppMaster {
         TEST_DIR.toString(), new String[] {TEST_DIR.toString()},
         new String[] {TEST_DIR.toString()},
         new TezApiVersionInfo().getVersion(), amCreds,
-        "someuser", null, null, null);
+        "someuser", null);
     am.init(conf);
     am.start();
 
@@ -548,7 +548,7 @@ public class TestDAGAppMaster {
       super(attemptId, ContainerId.newContainerId(attemptId, 1), "hostname", 12345, 12346,
           new SystemClock(), 0, isSession, TEST_DIR.getAbsolutePath(),
           new String[] { TEST_DIR.getAbsolutePath() }, new String[] { TEST_DIR.getAbsolutePath() },
-          new TezDagVersionInfo().getVersion(), createCredentials(), "jobname", null, null, null);
+          new TezDagVersionInfo().getVersion(), createCredentials(), "jobname", null);
     }
 
     private static Credentials createCredentials() {

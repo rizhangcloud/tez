@@ -20,17 +20,36 @@ package org.apache.tez.client.registry;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Interface for client-side AM discovery
  */
-public interface AMRegistryClient extends Closeable {
+public abstract class AMRegistryClient implements Closeable {
+
+  private List<AMRegistryClientListener> listeners = new ArrayList<>();
+
   //Get AM info given an appId
-  AMRecord getRecord(String appId) throws IOException;
+  public abstract AMRecord getRecord(String appId) throws IOException;
 
   //Get all AM infos in the registry
-  List<AMRecord> getAllRecords() throws IOException;
+  public abstract List<AMRecord> getAllRecords() throws IOException;
 
-  void addListener(AMRegistryClientListener listener);
+  public synchronized void addListener(AMRegistryClientListener listener) {
+    listeners.add(listener);
+  }
+
+  protected synchronized void notifyOnAdded(AMRecord record) {
+    for(AMRegistryClientListener listener : listeners) {
+      listener.onAdd(record);
+    }
+  }
+
+  protected synchronized void notifyOnRemoved(AMRecord record) {
+    for(AMRegistryClientListener listener : listeners) {
+      listener.onRemove(record);
+    }
+  }
+
 }

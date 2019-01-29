@@ -21,14 +21,13 @@ package org.apache.tez.dag.api.client.registry.zookeeper;
 import org.apache.curator.RetryLoop;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.recipes.nodes.PersistentEphemeralNode;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.registry.client.binding.RegistryUtils;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.tez.client.registry.AMRecord;
+import org.apache.tez.client.registry.AMRegistry;
 import org.apache.tez.client.registry.zookeeper.ZkConfig;
-import org.apache.tez.dag.api.client.registry.AMRegistry;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.Stat;
@@ -38,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Curator/Zookeeper impl of AMRegistry (for internal use only)
@@ -53,9 +53,11 @@ public class ZkAMRegistry extends AMRegistry {
   private List<AMRecord> amRecords = new ArrayList<>();
   private ZkConfig zkConfig = null;
   private boolean started = false;
+  private String externalId;
 
-  public ZkAMRegistry() {
+  public ZkAMRegistry(String externalId) {
     super("ZkAMRegistry");
+    this.externalId = externalId;
   }
 
   @Override
@@ -107,7 +109,7 @@ public class ZkAMRegistry extends AMRegistry {
   }
 
   @Override
-  public ApplicationId generateNewId() throws Exception {
+  public Optional<ApplicationId> generateNewId() throws Exception {
     createNamespaceIfNotExists();
     long namespaceCreationTime = getNamespaceCreationTime();
 
@@ -137,11 +139,15 @@ public class ZkAMRegistry extends AMRegistry {
       }
     }
     if(success) {
-      return ApplicationId.newInstance(namespaceCreationTime, tryId);
+      return Optional.of(ApplicationId.newInstance(namespaceCreationTime, tryId));
     } else {
       throw new RuntimeException("Could not obtain unique ApplicationId after " +
           zkConfig.getCuratorMaxRetries() + " tries");
     }
+  }
+
+  @Override public AMRecord createAmRecord(ApplicationId appId, String hostName, int port) {
+    return new AMRecord(appId, hostName, port, externalId);
   }
 
   private long getNamespaceCreationTime() throws Exception {
@@ -157,3 +163,4 @@ public class ZkAMRegistry extends AMRegistry {
     }
   }
 }
+

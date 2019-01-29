@@ -27,6 +27,7 @@ import java.util.Random;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.tez.client.TezClientUtils;
 import org.apache.tez.dag.api.TezConfiguration;
+import org.apache.tez.dag.api.TezConstants;
 import org.apache.tez.dag.api.UserPayload;
 import org.apache.tez.dag.api.records.DAGProtos;
 import org.apache.tez.serviceplugins.api.ContainerLauncherDescriptor;
@@ -256,7 +257,7 @@ public class TestTezUtils {
 
   @Test(timeout = 5000)
   public void testPluginsDescriptorFromJSON() throws IOException {
-    InputStream is = ClassLoader.getSystemResourceAsStream(TezConfiguration.SERVICE_PLUGINS_DESCRIPTOR_JSON);
+    InputStream is = ClassLoader.getSystemResourceAsStream(TezConstants.SERVICE_PLUGINS_DESCRIPTOR_JSON);
     ServicePluginsDescriptor spd = TezClientUtils.createPluginsDescriptorFromJSON(is);
     TaskSchedulerDescriptor tsd = spd.getTaskSchedulerDescriptors()[0];
     ContainerLauncherDescriptor cld = spd.getContainerLauncherDescriptors()[0];

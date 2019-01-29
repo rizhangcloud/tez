@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
   * Curator/Zookeeper impl of AMRegistryClient
 */
 @InterfaceAudience.Public
-public class ZkAMRegistryClient implements AMRegistryClient {
+public class ZkAMRegistryClient extends AMRegistryClient {
   private static final Logger LOG = LoggerFactory.getLogger(ZkAMRegistryClient.class);
 
   private final Configuration conf;
@@ -55,9 +55,14 @@ public class ZkAMRegistryClient implements AMRegistryClient {
   private List<AMRegistryClientListener> listeners = new ArrayList<>();
   private CuratorFramework client;
 
-  public ZkAMRegistryClient(final Configuration conf) throws Exception {
+  public ZkAMRegistryClient(final Configuration conf) {
     this.conf = conf;
-    init();
+    try {
+      init();
+    } catch(Exception e) {
+      LOG.error("Unable to initialize ZkAMRegistryClient");
+      throw new RuntimeException(e);
+    }
   }
 
   private void init() throws Exception {
@@ -147,18 +152,6 @@ public class ZkAMRegistryClient implements AMRegistryClient {
 
     private boolean isEmpty(ChildData childData) {
       return childData == null || childData.getData() == null || childData.getData().length == 0;
-    }
-  }
-
-  private synchronized void notifyOnAdded(AMRecord record) {
-    for(AMRegistryClientListener listener : listeners) {
-      listener.onAdd(record);
-    }
-  }
-
-  private synchronized void notifyOnRemoved(AMRecord record) {
-    for(AMRegistryClientListener listener : listeners) {
-      listener.onRemove(record);
     }
   }
 

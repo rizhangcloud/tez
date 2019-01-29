@@ -16,12 +16,18 @@
  * limitations under the License.
  */
 
-package org.apache.tez.dag.api.client.registry;
+package org.apache.tez.client.registry;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.service.AbstractService;
+import org.apache.hadoop.service.ServiceStateException;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
-import org.apache.tez.client.registry.AMRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * Base class for AMRegistry implementation
@@ -35,12 +41,16 @@ import org.apache.tez.client.registry.AMRecord;
  */
 public abstract class AMRegistry extends AbstractService {
 
+  private static final Logger LOG = LoggerFactory.getLogger(AMRegistry.class);
+  protected List<AMRecord> amRecords = new ArrayList<>();
+
   @Override
   public void init(Configuration conf) {
     try {
       this.serviceInit(conf);
     } catch (Exception e) {
-      throw new RuntimeException(e);
+      LOG.error("Failed to init AMRegistry: name={}, type={}", getName(), getClass().getName());
+      throw ServiceStateException.convert(e);
     }
   }
 
@@ -49,7 +59,8 @@ public abstract class AMRegistry extends AbstractService {
     try {
       this.serviceStart();
     } catch(Exception e) {
-      throw new RuntimeException(e);
+      LOG.error("Failed to start AMRegistry: name={}, type={}", getName(), getClass().getName());
+      throw ServiceStateException.convert(e);
     }
   }
 
@@ -61,18 +72,22 @@ public abstract class AMRegistry extends AbstractService {
   /* Under typical usage, add will be called once automatically with an AMRecord
      for the DAGClientServer servicing an AM
    */
-  public abstract void add(AMRecord server) throws Exception;
-
-  /*
-    Under typical usage, implementations should remove any stale AMRecords upon serviceStop
-   */
-  public abstract void remove(AMRecord server) throws Exception;
-
-  //Optional
-  public ApplicationId generateNewId() throws Exception {
-    throw new UnsupportedOperationException(String.format(
-        "%s does not support generateNewId() operation", getClass().getName()
-    ));
+  public void add(AMRecord server) throws Exception {
+    amRecords.add(server);
   }
 
+  public abstract void remove(AMRecord server) throws Exception;
+
+  public Optional<ApplicationId> generateNewId() throws Exception {
+    return Optional.empty();
+  }
+
+  public abstract AMRecord createAmRecord(ApplicationId appId, String hostName, int port);
+
+  @Override public void serviceStop() throws Exception {
+    List<AMRecord> records = new ArrayList<>(amRecords);
+    for(AMRecord record : records) {
+      remove(record);
+    }
+  }
 }

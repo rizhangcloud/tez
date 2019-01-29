@@ -63,7 +63,7 @@ public abstract class StandaloneWordCountDriver {
     List<AMRecord> sessions = registryClientZk.getAllRecords();
     Collections.shuffle(sessions);
     AMRecord am = sessions.get(0);
-    tezConf.set(TezConfiguration.TEZ_AM_CUSTOM_FRAMEWORK_CLIENT_CLASS, "org.apache.tez.client.registry.zookeeper.ZkFrameworkClient");
+    tezConf.set(TezConfiguration.TEZ_FRAMEWORK_MODE, "STANDALONE_ZOOKEEPER");
     tezConf.setBoolean(TezConfiguration.TEZ_IGNORE_LIB_URIS, true);
     tezClientInternal = createTezClient(am.getApplicationId().toString(), tezConf);
     StandaloneWordCount standaloneWordCount = new StandaloneWordCount();

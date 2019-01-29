@@ -19,6 +19,7 @@
 package org.apache.tez.client;
 
 import java.io.IOException;
+import java.util.Optional;
 
 import org.apache.hadoop.classification.InterfaceAudience.Private;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
@@ -33,26 +34,26 @@ import org.apache.tez.dag.api.TezConfiguration;
 import org.apache.tez.dag.api.TezException;
 import org.apache.tez.dag.api.TezReflectionException;
 import org.apache.tez.dag.api.TezUncheckedException;
+import org.apache.tez.frameworkplugins.ClientFrameworkService;
+import org.apache.tez.frameworkplugins.FrameworkUtils;
 
 @Private
 public abstract class FrameworkClient {
 
   public static FrameworkClient createFrameworkClient(TezConfiguration tezConf) {
+    Optional<FrameworkClient> pluginClient =
+        FrameworkUtils.get(ClientFrameworkService.class, tezConf)
+            .flatMap(framework -> framework.createOrGetFrameworkClient(tezConf));
 
     boolean isLocal = tezConf.getBoolean(TezConfiguration.TEZ_LOCAL_MODE, TezConfiguration.TEZ_LOCAL_MODE_DEFAULT);
-    String customFrameworkClientClassName = tezConf.get(TezConfiguration.TEZ_AM_CUSTOM_FRAMEWORK_CLIENT_CLASS);
     if (isLocal) {
       try {
         return ReflectionUtils.createClazzInstance("org.apache.tez.client.LocalClient");
       } catch (TezReflectionException e) {
         throw new TezUncheckedException("Fail to create LocalClient", e);
       }
-    } else if(customFrameworkClientClassName != null) {
-      try {
-        return ReflectionUtils.createClazzInstance(customFrameworkClientClassName);
-      } catch (TezReflectionException e) {
-        throw new TezUncheckedException("Failed to create custom FrameworkClient: " + customFrameworkClientClassName, e);
-      }
+    } else if(pluginClient.isPresent()) {
+      return pluginClient.get();
     }
     return new TezYarnClient(YarnClient.createYarnClient());
   }

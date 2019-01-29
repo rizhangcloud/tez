@@ -101,8 +101,6 @@ public interface AppContext {
 
   boolean isLocal();
 
-  boolean isStandalone();
-
   DAGAppMasterState getAMState();
 
   HistoryEventHandler getHistoryHandler();
