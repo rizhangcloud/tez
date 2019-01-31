@@ -69,7 +69,7 @@ public class ZkStandaloneAmExtensions implements AmExtensions {
 
   @Override
   public boolean isUsingYarnServicePlugin() {
-    return true;
+    return false;
   }
 
   @Override public Optional<DAGProtos.ConfigurationProto> loadConfigurationProto()  {
