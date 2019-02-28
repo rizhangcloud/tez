@@ -2035,4 +2035,17 @@ public class TezConfiguration extends Configuration {
   public static final String TEZ_AM_STANDALONE_CONFS =
       TEZ_AM_PREFIX + "standalone.confs";
 
+  /**
+   *  Acquire all FileSystems info. e.g., all namenodes info of HDFS federation cluster.
+   */
+  @ConfigurationScope(Scope.AM)
+  @ConfigurationProperty
+  public static final String TEZ_JOB_FS_SERVERS = "tez.job.fs-servers";
+
+  /**
+   *  Skip delegation token renewal for specified FileSystems.
+   */
+  @ConfigurationScope(Scope.AM)
+  @ConfigurationProperty
+  public static final String TEZ_JOB_FS_SERVERS_TOKEN_RENEWAL_EXCLUDE = "tez.job.fs-servers.token-renewal.exclude";
 }
