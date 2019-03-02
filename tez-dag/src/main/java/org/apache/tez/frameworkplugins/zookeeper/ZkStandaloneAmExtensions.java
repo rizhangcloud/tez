@@ -52,7 +52,8 @@ public class ZkStandaloneAmExtensions implements AmExtensions {
       Optional<AMRegistry> amRegistry = myFrameworkService.createOrGetAMRegistry(conf);
       if(amRegistry.isPresent()) {
         ApplicationId appId = amRegistry.get().generateNewId().get();
-        ApplicationAttemptId applicationAttemptId = ApplicationAttemptId.newInstance(appId, 0);
+        // attempId is set to 1 only then APP_LAUNCHED event gets triggered
+        ApplicationAttemptId applicationAttemptId = ApplicationAttemptId.newInstance(appId, 1);
         return Optional.of(ContainerId.newContainerId(applicationAttemptId, 0));
       } else {
         throw new RuntimeException("AMRegistry is required for ZkStandaloneAmExtensions");

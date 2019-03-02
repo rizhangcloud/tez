@@ -20,6 +20,8 @@ package org.apache.tez.dag.history.logging.proto;
 
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -60,6 +62,7 @@ public class ProtoHistoryLoggingService extends HistoryLoggingService {
   private ProtoMessageWriter<HistoryEventProto> appEventsWriter;
   private ProtoMessageWriter<HistoryEventProto> dagEventsWriter;
   private ProtoMessageWriter<ManifestEntryProto> manifestEventsWriter;
+  private Map<HistoryEventType, Long> eventsHisto = new ConcurrentHashMap<>();
   private LocalDate manifestDate;
   private TezDAGID currentDagId;
   private long dagSubmittedEventOffset = -1;
@@ -123,6 +126,10 @@ public class ProtoHistoryLoggingService extends HistoryLoggingService {
       return;
     }
     try {
+      if (LOG.isDebugEnabled()) {
+        eventsHisto.compute(event.getHistoryEvent().getEventType(), (k, v) -> (v == null) ? 1 : v + 1);
+        LOG.debug("EVENTS HISTOGRAM BEFORE: {}", eventsHisto);
+      }
       eventQueue.add(event);
     } catch (IllegalStateException e) {
       LOG.error("Queue capacity filled up, ignoring event: " +
@@ -130,6 +137,8 @@ public class ProtoHistoryLoggingService extends HistoryLoggingService {
       if (LOG.isDebugEnabled()) {
         LOG.debug("Queue capacity filled up, ignoring event: {}", event.getHistoryEvent());
       }
+    } catch(Exception e) {
+      LOG.warn("Exception thrown while handling history events..", e);
     }
   }
 
@@ -142,6 +151,10 @@ public class ProtoHistoryLoggingService extends HistoryLoggingService {
         evt = eventQueue.poll(100, TimeUnit.MILLISECONDS);
         if (evt != null) {
           handleEvent(evt);
+          if (LOG.isDebugEnabled()) {
+            eventsHisto.compute(evt.getHistoryEvent().getEventType(), (k, v) -> (v == null) ? 1 : v - 1);
+            LOG.info("EVENTS HISTOGRAM AFTER: {}", eventsHisto);
+          }
         }
       } catch (InterruptedException e) {
         LOG.info("EventQueue poll interrupted, ignoring it.", e);
