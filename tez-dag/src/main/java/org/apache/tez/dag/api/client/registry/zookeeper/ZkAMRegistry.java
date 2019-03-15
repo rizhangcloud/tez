@@ -94,7 +94,9 @@ public class ZkAMRegistry extends AMRegistry {
     RegistryUtils.ServiceRecordMarshal marshal = new RegistryUtils.ServiceRecordMarshal();
     String json = marshal.toJson(server.toServiceRecord());
     try {
-      client.setData().forPath(namespace + "/" + server.getApplicationId().toString(), json.getBytes());
+      final String path = namespace + "/" + server.getApplicationId().toString();
+      client.setData().forPath(path, json.getBytes());
+      LOG.info("Added AMRecord to zkpath {}", path);
     } catch(KeeperException.NoNodeException nne) {
       client.create().creatingParentContainersIfNeeded().withMode(CreateMode.EPHEMERAL).forPath(namespace + "/" + server.getApplicationId().toString(), json.getBytes());
     }
@@ -103,9 +105,9 @@ public class ZkAMRegistry extends AMRegistry {
 
   @Override public void remove(AMRecord server) throws Exception {
     amRecords.remove(server);
-    client.
-        delete().
-        forPath(namespace + "/" + server.getApplicationId().toString());
+    final String path = namespace + "/" + server.getApplicationId().toString();
+    client.delete().forPath(path);
+    LOG.info("Deleted AMRecord from zkpath {}", path);
   }
 
   @Override

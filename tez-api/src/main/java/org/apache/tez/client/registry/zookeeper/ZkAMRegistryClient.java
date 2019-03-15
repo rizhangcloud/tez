@@ -32,12 +32,15 @@ import org.apache.hadoop.registry.client.types.ServiceRecord;
 import org.apache.tez.client.registry.AMRecord;
 import org.apache.tez.client.registry.AMRegistryClient;
 import org.apache.tez.client.registry.AMRegistryClientListener;
+import org.apache.tez.dag.api.TezConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -52,28 +55,37 @@ public class ZkAMRegistryClient extends AMRegistryClient {
 
   //Cache of known AMs
   private ConcurrentHashMap<String, AMRecord> amRecordCache = new ConcurrentHashMap<>();
-  private List<AMRegistryClientListener> listeners = new ArrayList<>();
   private CuratorFramework client;
+  private PathChildrenCache cache;
 
-  public ZkAMRegistryClient(final Configuration conf) {
-    this.conf = conf;
-    try {
-      init();
-    } catch(Exception e) {
-      LOG.error("Unable to initialize ZkAMRegistryClient");
-      throw new RuntimeException(e);
+  private static Map<String, ZkAMRegistryClient> INSTANCES = new HashMap<>();
+
+  public static synchronized ZkAMRegistryClient getClient(final Configuration conf) {
+    String namespace = conf.get(TezConfiguration.TEZ_AM_REGISTRY_NAMESPACE);
+    ZkAMRegistryClient registry = INSTANCES.get(namespace);
+    if (registry == null) {
+      registry = new ZkAMRegistryClient(conf);
+      INSTANCES.put(namespace, registry);
     }
+    LOG.info("Returning tez AM registry ({}) for namespace '{}'", System.identityHashCode(registry), namespace);
+    return registry;
   }
 
-  private void init() throws Exception {
+  private ZkAMRegistryClient(final Configuration conf) {
+    this.conf = conf;
+  }
+
+  public void start() throws Exception {
     ZkConfig zkConf = new ZkConfig(this.conf);
     client = zkConf.createCuratorFramework();
-    PathChildrenCache cache = new PathChildrenCache(client, zkConf.getZkNamespace(), true);
+    cache = new PathChildrenCache(client, zkConf.getZkNamespace(), true);
     client.start();
     cache.start(PathChildrenCache.StartMode.BUILD_INITIAL_CACHE);
     for (ChildData childData : cache.getCurrentData()) {
       AMRecord amRecord = getAMRecord(childData);
-      amRecordCache.put(amRecord.getApplicationId().toString(), amRecord);
+      if (amRecord != null) {
+        amRecordCache.put(amRecord.getApplicationId().toString(), amRecord);
+      }
     }
     cache.getListenable().addListener(new ZkRegistryListener());
   }
@@ -81,6 +93,10 @@ public class ZkAMRegistryClient extends AMRegistryClient {
   //Deserialize ServiceRecord from Zookeeper to populate AMRecord in cache
   public static AMRecord getAMRecord(final ChildData childData) throws IOException {
     byte[] data = childData.getData();
+    // only the path appeared, there is no data yet
+    if (data.length == 0) {
+      return null;
+    }
     String value = new String(data);
     RegistryUtils.ServiceRecordMarshal marshal = new RegistryUtils.ServiceRecordMarshal();
     ServiceRecord serviceRecord = marshal.fromJson(value);
@@ -88,7 +104,10 @@ public class ZkAMRegistryClient extends AMRegistryClient {
   }
 
   @Override public AMRecord getRecord(String appId) {
-  //Return a copy
+    if (amRecordCache.get(appId) == null) {
+      return null;
+    }
+    //Return a copy
     return new AMRecord(amRecordCache.get(appId));
   }
 
@@ -116,9 +135,11 @@ public class ZkAMRegistryClient extends AMRegistryClient {
           LOG.info("AppId allocated: {}", childData.getPath());
         } else {
           AMRecord amRecord = getAMRecord(childData);
-          LOG.info("AM registered with data: {}", amRecord.toString());
-          amRecordCache.put(amRecord.getApplicationId().toString(), amRecord);
-          notifyOnAdded(amRecord);
+          if (amRecord != null) {
+            LOG.info("AM registered with data: {}. Notifying {} listeners.", amRecord, listeners.size());
+            amRecordCache.put(amRecord.getApplicationId().toString(), amRecord);
+            notifyOnAdded(amRecord);
+          }
         }
         break;
       case CHILD_UPDATED:
@@ -126,9 +147,11 @@ public class ZkAMRegistryClient extends AMRegistryClient {
           throw new RuntimeException("AM updated with empty data");
         } else {
           AMRecord amRecord = getAMRecord(childData);
-          LOG.info("AM updated data: {}", amRecord.toString());
-          amRecordCache.put(amRecord.getApplicationId().toString(), amRecord);
-          notifyOnAdded(amRecord);
+          if (amRecord != null) {
+            LOG.info("AM updated data: {}. Notifying {} listeners.", amRecord, listeners.size());
+            amRecordCache.put(amRecord.getApplicationId().toString(), amRecord);
+            notifyOnAdded(amRecord);
+          }
         }
         break;
       case CHILD_REMOVED:
@@ -136,9 +159,11 @@ public class ZkAMRegistryClient extends AMRegistryClient {
           LOG.info("Unused AppId unregistered: {}", childData.getPath());
         } else {
           AMRecord amRecord = getAMRecord(childData);
-          LOG.info("AM removed: {}", amRecord.toString());
-          amRecordCache.remove(amRecord.getApplicationId().toString(), amRecord);
-          notifyOnRemoved(amRecord);
+          if (amRecord != null) {
+            LOG.info("AM removed: {}. Notifying {} listeners.", amRecord, listeners.size());
+            amRecordCache.remove(amRecord.getApplicationId().toString(), amRecord);
+            notifyOnRemoved(amRecord);
+          }
         }
         break;
       default:

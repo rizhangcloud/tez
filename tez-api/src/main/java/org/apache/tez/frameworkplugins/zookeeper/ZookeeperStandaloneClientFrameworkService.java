@@ -15,6 +15,12 @@ public class ZookeeperStandaloneClientFrameworkService implements ClientFramewor
   }
 
   @Override public Optional<AMRegistryClient> createOrGetRegistryClient(Configuration conf) {
-    return Optional.of(new ZkAMRegistryClient(conf));
+    ZkAMRegistryClient registry = ZkAMRegistryClient.getClient(conf);
+    try {
+      registry.start();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+    return Optional.of(registry);
   }
 }

@@ -661,6 +661,7 @@ public class DAGAppMaster extends AbstractService {
         );
         try {
           amRegistry.add(amRecord);
+          LOG.info("Added AMRecord: {} to registry..", amRecord);
         } catch (Exception e) {
           throw new RuntimeException(e);
         }

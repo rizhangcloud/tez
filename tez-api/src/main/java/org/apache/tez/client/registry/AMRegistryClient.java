@@ -28,7 +28,7 @@ import java.util.List;
  */
 public abstract class AMRegistryClient implements Closeable {
 
-  private List<AMRegistryClientListener> listeners = new ArrayList<>();
+  protected List<AMRegistryClientListener> listeners = new ArrayList<>();
 
   //Get AM info given an appId
   public abstract AMRecord getRecord(String appId) throws IOException;

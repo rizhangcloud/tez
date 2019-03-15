@@ -22,6 +22,7 @@ import org.apache.hadoop.yarn.api.protocolrecords.GetNewApplicationResponse;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.hadoop.yarn.api.records.ApplicationReport;
 import org.apache.hadoop.yarn.api.records.ApplicationSubmissionContext;
+import org.apache.hadoop.yarn.api.records.FinalApplicationStatus;
 import org.apache.hadoop.yarn.api.records.YarnApplicationState;
 import org.apache.hadoop.yarn.client.api.YarnClientApplication;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
@@ -43,15 +44,16 @@ public class ZkFrameworkClient extends FrameworkClient {
 
   @Override public void init(TezConfiguration tezConf, YarnConfiguration yarnConf) {
     this.tezConf = tezConf;
+    amRegistryClient = ZkAMRegistryClient.getClient(tezConf);
   }
 
   @Override public void start() {
     try {
-      amRegistryClient = new ZkAMRegistryClient(tezConf);
-      isRunning = true;
+      this.amRegistryClient.start();
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
+    isRunning = true;
   }
 
   @Override public void stop() {
@@ -87,9 +89,16 @@ public class ZkFrameworkClient extends FrameworkClient {
     report.setApplicationId(appId);
     report.setTrackingUrl("");
     amRecord = amRegistryClient.getRecord(appId.toString());
-    report.setHost(amRecord.getHost());
-    report.setRpcPort(amRecord.getPort());
-    report.setYarnApplicationState(YarnApplicationState.RUNNING);
+    // this could happen if the AM died, the AM record store under path will not exist
+    if (amRecord == null) {
+      report.setYarnApplicationState(YarnApplicationState.FINISHED);
+      report.setFinalApplicationStatus(FinalApplicationStatus.FAILED);
+      report.setDiagnostics("AM record not found (likely died) in zookeeper for application id: " + appId);
+    } else {
+      report.setHost(amRecord.getHost());
+      report.setRpcPort(amRecord.getPort());
+      report.setYarnApplicationState(YarnApplicationState.RUNNING);
+    }
     return report;
   }
 

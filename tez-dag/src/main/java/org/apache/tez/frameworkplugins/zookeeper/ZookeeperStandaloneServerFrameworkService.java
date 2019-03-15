@@ -6,26 +6,33 @@ import org.apache.tez.dag.api.TezConstants;
 import org.apache.tez.dag.api.client.registry.zookeeper.ZkAMRegistry;
 import org.apache.tez.frameworkplugins.AmExtensions;
 import org.apache.tez.frameworkplugins.ServerFrameworkService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 
 public class ZookeeperStandaloneServerFrameworkService implements ServerFrameworkService {
+  private static final Logger LOG = LoggerFactory.getLogger(ZookeeperStandaloneServerFrameworkService.class);
   private ZkAMRegistry amRegistry;
 
-  @Override public synchronized Optional<AMRegistry> createOrGetAMRegistry(Configuration conf) {
-    if(amRegistry == null) {
+  @Override
+  public synchronized Optional<AMRegistry> createOrGetAMRegistry(Configuration conf) {
+    if (amRegistry == null) {
       try {
-        amRegistry = new ZkAMRegistry(System.getenv(TezConstants.TEZ_AM_EXTERNAL_ID));
+        final String externalID = System.getenv(TezConstants.TEZ_AM_EXTERNAL_ID);
+        amRegistry = new ZkAMRegistry(externalID);
         amRegistry.init(conf);
         amRegistry.start();
-      } catch(Exception e) {
+        LOG.info("Created Zookeeper based AM Registry with externalID: {}", externalID);
+      } catch (Exception e) {
         throw new RuntimeException(e);
       }
     }
     return Optional.of(amRegistry);
   }
 
-  @Override public Optional<AmExtensions> createOrGetDAGAppMasterExtensions() {
+  @Override
+  public Optional<AmExtensions> createOrGetDAGAppMasterExtensions() {
     return Optional.of(new ZkStandaloneAmExtensions(this));
   }
 }
