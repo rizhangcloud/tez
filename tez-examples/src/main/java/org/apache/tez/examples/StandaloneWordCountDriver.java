@@ -60,7 +60,6 @@ public abstract class StandaloneWordCountDriver {
     tezConf = new TezConfiguration();
     tezConf.set(TezConfiguration.TEZ_AM_ZOOKEEPER_QUORUM, "localhost:2181");
     ZkAMRegistryClient registryClientZk = ZkAMRegistryClient.getClient(tezConf);
-    registryClientZk.start();
     List<AMRecord> sessions = registryClientZk.getAllRecords();
     Collections.shuffle(sessions);
     AMRecord am = sessions.get(0);

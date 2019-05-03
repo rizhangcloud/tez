@@ -1,4 +1,4 @@
-/**
+/*
   * Licensed to the Apache Software Foundation (ASF) under one
   * or more contributor license agreements.  See the NOTICE file
   * distributed with this work for additional information
@@ -18,17 +18,24 @@
 
 package org.apache.tez.client.registry.zookeeper;
 
-import com.google.common.base.Preconditions;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.imps.CuratorFrameworkState;
 import org.apache.curator.framework.recipes.cache.ChildData;
-import org.apache.curator.framework.recipes.cache.PathChildrenCache;
-import org.apache.curator.framework.recipes.cache.PathChildrenCacheEvent;
-import org.apache.curator.framework.recipes.cache.PathChildrenCacheListener;
+import org.apache.curator.framework.recipes.cache.TreeCache;
+import org.apache.curator.framework.recipes.cache.TreeCacheEvent;
+import org.apache.curator.framework.recipes.cache.TreeCacheListener;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.registry.client.binding.RegistryUtils;
 import org.apache.hadoop.registry.client.types.ServiceRecord;
+import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.tez.client.registry.AMRecord;
 import org.apache.tez.client.registry.AMRegistryClient;
 import org.apache.tez.client.registry.AMRegistryClientListener;
@@ -36,13 +43,8 @@ import org.apache.tez.dag.api.TezConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.google.common.base.Preconditions;
 
 /**
   * Curator/Zookeeper impl of AMRegistryClient
@@ -56,15 +58,15 @@ public class ZkAMRegistryClient extends AMRegistryClient {
   //Cache of known AMs
   private ConcurrentHashMap<String, AMRecord> amRecordCache = new ConcurrentHashMap<>();
   private CuratorFramework client;
-  private PathChildrenCache cache;
 
   private static Map<String, ZkAMRegistryClient> INSTANCES = new HashMap<>();
 
-  public static synchronized ZkAMRegistryClient getClient(final Configuration conf) {
+  public static synchronized ZkAMRegistryClient getClient(final Configuration conf) throws Exception {
     String namespace = conf.get(TezConfiguration.TEZ_AM_REGISTRY_NAMESPACE);
     ZkAMRegistryClient registry = INSTANCES.get(namespace);
     if (registry == null) {
       registry = new ZkAMRegistryClient(conf);
+      registry.start();
       INSTANCES.put(namespace, registry);
     }
     LOG.info("Returning tez AM registry ({}) for namespace '{}'", System.identityHashCode(registry), namespace);
@@ -75,32 +77,36 @@ public class ZkAMRegistryClient extends AMRegistryClient {
     this.conf = conf;
   }
 
-  public void start() throws Exception {
+  private void start() throws Exception {
     ZkConfig zkConf = new ZkConfig(this.conf);
     client = zkConf.createCuratorFramework();
-    cache = new PathChildrenCache(client, zkConf.getZkNamespace(), true);
+    final TreeCache cache = new TreeCache(client, zkConf.getZkNamespace());
     client.start();
-    cache.start(PathChildrenCache.StartMode.BUILD_INITIAL_CACHE);
-    for (ChildData childData : cache.getCurrentData()) {
-      AMRecord amRecord = getAMRecord(childData);
-      if (amRecord != null) {
-        amRecordCache.put(amRecord.getApplicationId().toString(), amRecord);
-      }
-    }
+    cache.start();
     cache.getListenable().addListener(new ZkRegistryListener());
   }
 
   //Deserialize ServiceRecord from Zookeeper to populate AMRecord in cache
   public static AMRecord getAMRecord(final ChildData childData) throws IOException {
+    // not a leaf path. Only leaf path contains AMRecord
+    if (!childData.getPath().contains(ApplicationId.appIdStrPrefix)) {
+      return null;
+    }
     byte[] data = childData.getData();
     // only the path appeared, there is no data yet
     if (data.length == 0) {
       return null;
     }
     String value = new String(data);
-    RegistryUtils.ServiceRecordMarshal marshal = new RegistryUtils.ServiceRecordMarshal();
-    ServiceRecord serviceRecord = marshal.fromJson(value);
-    return new AMRecord(serviceRecord);
+    try {
+      RegistryUtils.ServiceRecordMarshal marshal = new RegistryUtils.ServiceRecordMarshal();
+      ServiceRecord serviceRecord = marshal.fromJson(value);
+      return new AMRecord(serviceRecord);
+    } catch (JsonParseException e) {
+      // not a json AMRecord (SRV). could be some other data
+      LOG.warn("Non-json data received while de-serializing AMRecord: {}. Ignoring..", value);
+      return null;
+    }
   }
 
   @Override public AMRecord getRecord(String appId) {
@@ -111,26 +117,28 @@ public class ZkAMRegistryClient extends AMRegistryClient {
     return new AMRecord(amRecordCache.get(appId));
   }
 
-  @Override public List<AMRecord> getAllRecords() {
+  @Override
+  public List<AMRecord> getAllRecords() {
     return amRecordCache.values().stream()
         .map(record -> new AMRecord(record)).collect(Collectors.toList());
-    }
+  }
 
-  @Override public synchronized void addListener(AMRegistryClientListener listener) {
+  @Override
+  public synchronized void addListener(AMRegistryClientListener listener) {
     listeners.add(listener);
   }
 
   //Callback for Zookeeper to update local cache
-  private class ZkRegistryListener implements PathChildrenCacheListener {
+  private class ZkRegistryListener implements TreeCacheListener {
 
-  @Override public void childEvent(final CuratorFramework client, final PathChildrenCacheEvent event)
+  @Override public void childEvent(final CuratorFramework client, final TreeCacheEvent event)
       throws Exception {
     Preconditions.checkArgument(client != null && client.getState() == CuratorFrameworkState.STARTED,
           "Curator client is not started");
 
     ChildData childData = event.getData();
     switch (event.getType()) {
-      case CHILD_ADDED:
+      case NODE_ADDED:
         if(isEmpty(childData)) {
           LOG.info("AppId allocated: {}", childData.getPath());
         } else {
@@ -142,7 +150,7 @@ public class ZkAMRegistryClient extends AMRegistryClient {
           }
         }
         break;
-      case CHILD_UPDATED:
+      case NODE_UPDATED:
         if(isEmpty(childData)) {
           throw new RuntimeException("AM updated with empty data");
         } else {
@@ -154,7 +162,7 @@ public class ZkAMRegistryClient extends AMRegistryClient {
           }
         }
         break;
-      case CHILD_REMOVED:
+      case NODE_REMOVED:
         if(isEmpty(childData)) {
           LOG.info("Unused AppId unregistered: {}", childData.getPath());
         } else {

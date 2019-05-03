@@ -10,17 +10,18 @@ import org.apache.tez.frameworkplugins.ClientFrameworkService;
 import java.util.Optional;
 
 public class ZookeeperStandaloneClientFrameworkService implements ClientFrameworkService {
-  @Override public Optional<FrameworkClient> createOrGetFrameworkClient(Configuration conf) {
+  @Override
+  public Optional<FrameworkClient> createOrGetFrameworkClient(Configuration conf) {
     return Optional.of(new ZkFrameworkClient());
   }
 
-  @Override public Optional<AMRegistryClient> createOrGetRegistryClient(Configuration conf) {
-    ZkAMRegistryClient registry = ZkAMRegistryClient.getClient(conf);
+  @Override
+  public Optional<AMRegistryClient> createOrGetRegistryClient(Configuration conf) {
     try {
-      registry.start();
+      ZkAMRegistryClient registry = ZkAMRegistryClient.getClient(conf);
+      return Optional.of(registry);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
-    return Optional.of(registry);
   }
 }

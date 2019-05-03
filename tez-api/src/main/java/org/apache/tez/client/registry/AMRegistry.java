@@ -82,7 +82,8 @@ public abstract class AMRegistry extends AbstractService {
     return Optional.empty();
   }
 
-  public abstract AMRecord createAmRecord(ApplicationId appId, String hostName, int port);
+  public abstract AMRecord createAmRecord(String computeName, ApplicationId appId, String hostName, String hostIp,
+    int port);
 
   @Override public void serviceStop() throws Exception {
     List<AMRecord> records = new ArrayList<>(amRecords);

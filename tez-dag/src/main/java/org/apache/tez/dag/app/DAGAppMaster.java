@@ -80,6 +80,7 @@ import org.apache.tez.client.CallerContext;
 import org.apache.tez.client.TezClientUtils;
 import org.apache.tez.client.registry.AMRecord;
 import org.apache.tez.client.registry.AMRegistry;
+import org.apache.tez.client.registry.zookeeper.ZkConfig;
 import org.apache.tez.common.ReflectionUtils;
 import org.apache.tez.common.TezUtils;
 import org.apache.tez.common.VersionInfo;
@@ -656,8 +657,11 @@ public class DAGAppMaster extends AbstractService {
   public static void initAmRegistry(ApplicationId appId, AMRegistry amRegistry, DAGClientServer dagClientServer) throws Exception {
     dagClientServer.registerServiceListener((service) -> {
       if (service.isInState(STATE.STARTED)) {
-        AMRecord amRecord = amRegistry.createAmRecord(
-            appId, dagClientServer.getBindAddress().getHostName(), dagClientServer.getBindAddress().getPort()
+        final String computeName = System.getenv(ZkConfig.COMPUTE_GROUP_NAME_ENV);
+        AMRecord amRecord = amRegistry.createAmRecord(computeName,
+            appId, dagClientServer.getBindAddress().getHostName(),
+          dagClientServer.getBindAddress().getAddress().getHostAddress(),
+          dagClientServer.getBindAddress().getPort()
         );
         try {
           amRegistry.add(amRecord);

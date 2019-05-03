@@ -66,7 +66,7 @@ public class ZkAMRegistry extends AMRegistry {
       zkConfig = new ZkConfig(conf);
       this.client = zkConfig.createCuratorFramework();
       this.namespace = zkConfig.getZkNamespace();
-      LOG.info("AMRegistryZkImpl initialized");
+      LOG.info("AMRegistryZkImpl initialized with namespace: {}", namespace);
     }
   }
 
@@ -148,8 +148,9 @@ public class ZkAMRegistry extends AMRegistry {
     }
   }
 
-  @Override public AMRecord createAmRecord(ApplicationId appId, String hostName, int port) {
-    return new AMRecord(appId, hostName, port, externalId);
+  @Override public AMRecord createAmRecord(String computeName, ApplicationId appId, String hostName, String hostIp,
+    int port) {
+    return new AMRecord(appId, hostName, hostIp, port, externalId, computeName);
   }
 
   private long getNamespaceCreationTime() throws Exception {

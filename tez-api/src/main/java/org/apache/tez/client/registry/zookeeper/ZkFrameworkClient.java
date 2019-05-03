@@ -42,30 +42,40 @@ public class ZkFrameworkClient extends FrameworkClient {
   private ZkAMRegistryClient amRegistryClient = null;
   private boolean isRunning = false;
 
-  @Override public void init(TezConfiguration tezConf, YarnConfiguration yarnConf) {
+  @Override
+  public synchronized void init(TezConfiguration tezConf, YarnConfiguration yarnConf) {
     this.tezConf = tezConf;
-    amRegistryClient = ZkAMRegistryClient.getClient(tezConf);
-  }
-
-  @Override public void start() {
-    try {
-      this.amRegistryClient.start();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+    if (this.amRegistryClient == null) {
+      try {
+        this.amRegistryClient = ZkAMRegistryClient.getClient(tezConf);
+        this.isRunning = true;
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
     }
-    isRunning = true;
   }
 
-  @Override public void stop() {
+  @Override
+  public void start() {
+  }
+
+  @Override
+  public void stop() {
     isRunning = false;
-    amRegistryClient.close();
+    if (amRegistryClient != null) {
+      amRegistryClient.close();
+    }
   }
 
-  @Override public void close() throws IOException {
-    amRegistryClient.close();
+  @Override
+  public void close() throws IOException {
+    if (amRegistryClient != null) {
+      amRegistryClient.close();
+    }
   }
 
-  @Override public YarnClientApplication createApplication() throws YarnException, IOException {
+  @Override
+  public YarnClientApplication createApplication() throws YarnException, IOException {
     ApplicationSubmissionContext context = Records.newRecord(ApplicationSubmissionContext.class);
     ApplicationId appId = amRecord.getApplicationId();
     context.setApplicationId(appId);
@@ -74,17 +84,22 @@ public class ZkFrameworkClient extends FrameworkClient {
     return new YarnClientApplication(response, context);
   }
 
-  @Override public ApplicationId submitApplication(ApplicationSubmissionContext appSubmissionContext)
+  @Override
+  public ApplicationId submitApplication(ApplicationSubmissionContext appSubmissionContext)
       throws YarnException, IOException, TezException {
     //Unused
     return null;
   }
 
-  @Override public void killApplication(ApplicationId appId) throws YarnException, IOException {
-    amRegistryClient.close();
+  @Override
+  public void killApplication(ApplicationId appId) throws YarnException, IOException {
+    if (amRegistryClient != null) {
+      amRegistryClient.close();
+    }
   }
 
-  @Override public ApplicationReport getApplicationReport(ApplicationId appId) throws YarnException, IOException {
+  @Override
+  public ApplicationReport getApplicationReport(ApplicationId appId) throws YarnException, IOException {
     ApplicationReport report = Records.newRecord(ApplicationReport.class);
     report.setApplicationId(appId);
     report.setTrackingUrl("");
@@ -102,7 +117,8 @@ public class ZkFrameworkClient extends FrameworkClient {
     return report;
   }
 
-  @Override public boolean isRunning() throws IOException {
+  @Override
+  public boolean isRunning() throws IOException {
     return isRunning;
   }
 }

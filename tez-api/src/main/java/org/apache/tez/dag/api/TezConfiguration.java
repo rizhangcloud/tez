@@ -1979,6 +1979,15 @@ public class TezConfiguration extends Configuration {
   public static final String TEZ_AM_REGISTRY_NAMESPACE_DEFAULT = "/tez_am/server";
 
   /**
+   * Boolean value
+   */
+  @ConfigurationScope(Scope.AM)
+  @ConfigurationProperty
+  public static final String TEZ_AM_REGISTRY_ENABLE_COMPUTE_GROUPS = TEZ_AM_PREFIX
+    + "registry.enable.compute.groups";
+  public static final boolean TEZ_AM_REGISTRY_ENABLE_COMPUTE_GROUPS_DEFAULT = false;
+
+  /**
    * Integer value
    */
   @ConfigurationScope(Scope.AM)
