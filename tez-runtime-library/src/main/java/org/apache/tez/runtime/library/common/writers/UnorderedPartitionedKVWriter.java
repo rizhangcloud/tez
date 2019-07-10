@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 import java.util.zip.Deflater;
 
 import com.google.common.collect.Lists;
@@ -61,6 +62,7 @@ import org.apache.tez.runtime.api.Event;
 import org.apache.tez.runtime.api.TaskFailureType;
 import org.apache.tez.runtime.api.OutputContext;
 import org.apache.tez.runtime.api.events.CompositeDataMovementEvent;
+import org.apache.tez.runtime.api.events.DataMovementEvent;
 import org.apache.tez.runtime.library.api.IOInterruptedException;
 import org.apache.tez.runtime.library.api.TezRuntimeConfiguration.ReportPartitionStats;
 import org.apache.tez.runtime.library.api.TezRuntimeConfiguration;
@@ -70,7 +72,9 @@ import org.apache.tez.runtime.library.common.sort.impl.TezIndexRecord;
 import org.apache.tez.runtime.library.common.sort.impl.IFile.Writer;
 import org.apache.tez.runtime.library.common.sort.impl.TezSpillRecord;
 import org.apache.tez.runtime.library.common.shuffle.ShuffleUtils;
+import org.apache.tez.runtime.library.shuffle.impl.ShuffleUserPayloads;
 import org.apache.tez.runtime.library.shuffle.impl.ShuffleUserPayloads.DataMovementEventPayloadProto;
+import org.eclipse.jetty.util.log.Log;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,8 +87,10 @@ import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.protobuf.ByteString;
-
+import org.apache.tez.runtime.library.common.sort.impl.FileBackedBoundedByteArrayOutputStream;
 import static org.apache.tez.runtime.library.common.sort.impl.TezSpillRecord.SPILL_FILE_PERMS;
+import org.apache.hadoop.io.IOUtils;
+
 
 public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWriter {
 
@@ -128,6 +134,10 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
   // uncompressed size for each partition
   private final long[] sizePerPartition;
   private volatile long spilledSize = 0;
+
+  private boolean dataInMemBuffer = false;
+  private boolean dataViaEventsEnabled;
+  private int dataViaEventsMaxSize;
 
   static final ThreadLocal<Deflater> deflater = new ThreadLocal<Deflater>() {
 
@@ -210,6 +220,14 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
     this.pipelinedShuffle = pipelinedShuffleConf && !isFinalMergeEnabled;
     this.finalEvents = Lists.newLinkedList();
 
+    this.dataViaEventsEnabled = conf.getBoolean(
+            TezRuntimeConfiguration.TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_ENABLED,
+            TezRuntimeConfiguration.TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_ENABLED_DEFAULT);
+
+    this.dataViaEventsMaxSize = conf.getInt(
+            TezRuntimeConfiguration.TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_MAX_SIZE,
+            TezRuntimeConfiguration.TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_MAX_SIZE_DEFAULT);
+
     if (availableMemoryBytes == 0) {
       Preconditions.checkArgument(((numPartitions == 1) && !pipelinedShuffle), "availableMemory "
           + "can be set to 0 only when numPartitions=1 and " + TezRuntimeConfiguration
@@ -270,24 +288,41 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
     outputLargeRecordsCounter = outputContext.getCounters().findCounter(
         TaskCounter.OUTPUT_LARGE_RECORDS);
 
-
-
     indexFileSizeEstimate = numPartitions * Constants.MAP_OUTPUT_INDEX_RECORD_LENGTH;
 
     if (numPartitions == 1 && !pipelinedShuffle) {
       //special case, where in only one partition is available.
-      finalOutPath = outputFileHandler.getOutputFileForWrite();
-      finalIndexPath = outputFileHandler.getOutputIndexFileForWrite(indexFileSizeEstimate);
+
       skipBuffers = true;
-      writer = new IFile.Writer(conf, rfs, finalOutPath, keyClass, valClass,
-          codec, outputRecordsCounter, outputRecordBytesCounter);
-      if (!SPILL_FILE_PERMS.equals(SPILL_FILE_PERMS.applyUMask(FsPermission.getUMask(conf)))) {
+
+      if (dataViaEventsEnabled) {
+        // the entrance to use the dataViaEvent
+        writer = new Writer(conf, rfs, () -> {
+            try {
+                return outputFileHandler.getOutputFileForWrite();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }, keyClass, valClass,
+                codec, outputRecordsCounter, outputRecordBytesCounter, false, true,
+                dataViaEventsMaxSize, dataViaEventSize);
+      }
+      else {
+        finalOutPath = outputFileHandler.getOutputFileForWrite();
+        finalIndexPath = outputFileHandler.getOutputIndexFileForWrite(indexFileSizeEstimate);
+        writer = new IFile.Writer(conf, rfs, finalOutPath, keyClass, valClass,
+            codec, outputRecordsCounter, outputRecordBytesCounter);
+      }
+
+      if ((!SPILL_FILE_PERMS.equals(SPILL_FILE_PERMS.applyUMask(FsPermission.getUMask(conf))))
+        &&(rfs.exists(finalOutPath))) {
         rfs.setPermission(finalOutPath, SPILL_FILE_PERMS);
       }
     } else {
-      skipBuffers = false;
-      writer = null;
+        skipBuffers = false;
+        writer = null;
     }
+
     LOG.info(destNameTrimmed + ": "
         + "numBuffers=" + numBuffers
         + ", sizePerBuffer=" + sizePerBuffer
@@ -686,6 +721,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
 
   @Override
   public List<Event> close() throws IOException, InterruptedException {
+
     // In case there are buffers to be spilled, schedule spilling
     scheduleSpill(true);
     List<Event> eventList = Lists.newLinkedList();
@@ -699,6 +735,8 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
     } finally {
       spillLock.unlock();
     }
+
+
     if (spillException != null) {
       LOG.error(destNameTrimmed + ": " + "Error during spill, throwing");
       // Assuming close will be called on the same thread as the write
@@ -718,13 +756,20 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
       List<Event> events = Lists.newLinkedList();
       if (!pipelinedShuffle) {
         if (skipBuffers) {
+          dataInMemBuffer = writer.inMemBuffer();
+
           writer.close();
           long rawLen = writer.getRawLength();
           long compLen = writer.getCompressedLength();
-          TezIndexRecord rec = new TezIndexRecord(0, rawLen, compLen);
-          TezSpillRecord sr = new TezSpillRecord(1);
-          sr.putIndex(rec, 0);
-          sr.writeToFile(finalIndexPath, conf);
+
+          if(!dataInMemBuffer)
+          {
+            TezIndexRecord rec = new TezIndexRecord(0, rawLen, compLen);
+            TezSpillRecord sr = new TezSpillRecord(1);
+            sr.putIndex(rec, 0);
+            finalIndexPath = outputFileHandler.getOutputIndexFileForWrite(indexFileSizeEstimate);
+            sr.writeToFile(finalIndexPath, conf);
+          }
 
           BitSet emptyPartitions = new BitSet();
           if (outputRecordsCounter.getValue() == 0) {
@@ -742,8 +787,20 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
             fileOutputBytesCounter.increment(compLen + indexFileSizeEstimate);
           }
           eventList.add(generateVMEvent());
-          eventList.add(generateDMEvent(false, -1, false, outputContext
-              .getUniqueIdentifier(), emptyPartitions));
+
+          if (!dataInMemBuffer) {
+            eventList.add(generateDMEvent(false, -1, false, outputContext
+                    .getUniqueIdentifier(), emptyPartitions));
+          } else {
+
+            eventList.add(generateDMEvent2(false, -1, true,
+                    outputContext.getUniqueIdentifier(), emptyPartitions,
+                    writer.getTmpDataBuffer()));
+
+            //Todo debug use, should delete
+            LOG.info("dataviavent: UnorderPartitionedKVWriter.close: data fits into memory");
+          }
+
           return eventList;
         }
 
@@ -857,6 +914,55 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
     }
 
     ByteBuffer payload = payloadBuilder.build().toByteString().asReadOnlyByteBuffer();
+    return CompositeDataMovementEvent.create(0, numPartitions, payload);
+  }
+
+  private Event generateDMEvent2(boolean addSpillDetails, int spillId,
+                                boolean isLastSpill, String pathComponent, BitSet emptyPartitions, byte[] data)
+          throws IOException {
+
+    outputContext.notifyProgress();
+    DataMovementEventPayloadProto.Builder payloadBuilder = DataMovementEventPayloadProto
+            .newBuilder();
+
+    String host = getHost();
+    if (emptyPartitions.cardinality() != 0) {
+      // Empty partitions exist
+      ByteString emptyPartitionsByteString =
+              TezCommonUtils.compressByteArrayToByteString(TezUtilsInternal.toByteArray
+                      (emptyPartitions), deflater.get());
+      payloadBuilder.setEmptyPartitions(emptyPartitionsByteString);
+    }
+
+
+    if (emptyPartitions.cardinality() != numPartitions) {
+      // Populate payload only if at least 1 partition has data
+      payloadBuilder.setHost(host);
+      payloadBuilder.setPort(getShufflePort());
+      payloadBuilder.setPathComponent(pathComponent);
+    }
+
+
+    if (addSpillDetails) {
+      payloadBuilder.setSpillId(spillId);
+      payloadBuilder.setLastEvent(isLastSpill);
+    }
+
+    LOG.info("Serialzing actual data into DataMovementEvent, dataSize: " + this.writer.getCompressedLength());
+    ShuffleUserPayloads.DataProto.Builder dataProtoBuilder = ShuffleUserPayloads.DataProto.newBuilder();
+    dataProtoBuilder.setData(ByteString.copyFrom(data));
+    dataProtoBuilder.setRawLength((int) this.writer.getRawLength());
+
+    dataProtoBuilder.setCompressedLength((int) this.writer.getCompressedLength());
+    payloadBuilder.setData(dataProtoBuilder.build());
+
+    ByteBuffer payload = payloadBuilder.build().toByteString().asReadOnlyByteBuffer();
+    payloadBuilder.setPathComponent("attempttmp");
+
+
+    //Todo debug use, should delete
+    LOG.info("dataviavent: generateDMEvent2");
+
     return CompositeDataMovementEvent.create(0, numPartitions, payload);
   }
 

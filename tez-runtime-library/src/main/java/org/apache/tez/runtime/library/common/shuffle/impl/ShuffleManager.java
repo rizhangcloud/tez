@@ -74,6 +74,7 @@ import org.apache.tez.runtime.api.InputContext;
 import org.apache.tez.runtime.api.events.InputReadErrorEvent;
 import org.apache.tez.runtime.library.api.TezRuntimeConfiguration;
 import org.apache.tez.runtime.library.common.InputAttemptIdentifier;
+import org.apache.tez.runtime.library.common.InputIdentifier;
 import org.apache.tez.runtime.library.common.TezRuntimeUtils;
 import org.apache.tez.runtime.library.common.shuffle.FetchResult;
 import org.apache.tez.runtime.library.common.shuffle.FetchedInput;
@@ -87,7 +88,6 @@ import org.apache.tez.runtime.library.common.shuffle.InputHost;
 import org.apache.tez.runtime.library.common.shuffle.InputHost.PartitionToInputs;
 import org.apache.tez.runtime.library.common.shuffle.ShuffleUtils;
 import org.apache.tez.runtime.library.common.shuffle.ShuffleUtils.FetchStatsLogger;
-
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
@@ -662,6 +662,51 @@ public class ShuffleManager implements FetcherCallback {
       wakeLoop.signal();
     } finally {
       lock.unlock();
+    }
+  }
+
+  public void addCompletedInputWithData(
+          InputAttemptIdentifier srcAttemptIdentifier, FetchedInput fetchedInput)
+          throws IOException {
+    //InputIdentifier inputIdentifier = srcAttemptIdentifier.getInputIdentifier();
+    int inputIdentifier = srcAttemptIdentifier.getInputIdentifier();
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Received Data via Event: " + srcAttemptIdentifier + " to "
+                      + fetchedInput.getType());
+    }
+    // Count irrespective of whether this is a copy of an already fetched input
+    lock.lock();
+    try {
+      lastProgressTime = System.currentTimeMillis();
+    } finally {
+      lock.unlock();
+    }
+
+    boolean committed = false;
+    if (!completedInputSet.get(inputIdentifier)) {
+      synchronized (completedInputSet) {
+        if (!completedInputSet.get(inputIdentifier)) {
+          fetchedInput.commit();
+          committed = true;
+          if (!srcAttemptIdentifier.canRetrieveInputInChunks()) {
+            registerCompletedInput(fetchedInput);
+          } else {
+            registerCompletedInputForPipelinedShuffle(srcAttemptIdentifier, fetchedInput);
+          }
+        }
+      }
+    }
+    if (!committed) {
+      fetchedInput.abort(); // If this fails, the fetcher may attempt another
+      // abort.
+    } else {
+      lock.lock();
+      try {
+        // Signal the wakeLoop to check for termination.
+        wakeLoop.signal();
+      } finally {
+        lock.unlock();
+      }
     }
   }
 
