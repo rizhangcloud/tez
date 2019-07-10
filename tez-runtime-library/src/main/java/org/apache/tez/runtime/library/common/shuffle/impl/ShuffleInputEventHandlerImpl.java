@@ -166,6 +166,9 @@ public class ShuffleInputEventHandlerImpl implements ShuffleEventHandler {
 
   private void processDataMovementEvent(DataMovementEvent dme, DataMovementEventPayloadProto shufflePayload, BitSet emptyPartitionsBitSet) throws IOException {
     int srcIndex = dme.getSourceIndex();
+
+    String hostIdentifier = shufflePayload.getHost() + ":" + shufflePayload.getPort();
+
     if (LOG.isDebugEnabled()) {
       LOG.debug("DME srcIdx: " + srcIndex + ", targetIndex: " + dme.getTargetIndex()
           + ", attemptNum: " + dme.getVersion() + ", payload: " + ShuffleUtils
@@ -189,7 +192,18 @@ public class ShuffleInputEventHandlerImpl implements ShuffleEventHandler {
     CompositeInputAttemptIdentifier srcAttemptIdentifier = constructInputAttemptIdentifier(dme.getTargetIndex(), 1, dme.getVersion(),
         shufflePayload, (useSharedInputs && srcIndex == 0));
 
-    shuffleManager.addKnownInput(shufflePayload.getHost(), shufflePayload.getPort(), srcAttemptIdentifier, srcIndex);
+
+    if (shufflePayload.hasData()) {
+      //shuffleManager.addKnownInput(shufflePayload.getHost(),shufflePayload.getPort(), srcAttemptIdentifier, srcIndex);
+      DataProto dataProto = shufflePayload.getData();
+
+      FetchedInput fetchedInput = inputAllocator.allocate(dataProto.getRawLength(),
+              dataProto.getCompressedLength(), srcAttemptIdentifier);
+      moveDataToFetchedInput(dataProto, fetchedInput, hostIdentifier);
+      shuffleManager.addCompletedInputWithData(srcAttemptIdentifier, fetchedInput);
+    } else {
+      shuffleManager.addKnownInput(shufflePayload.getHost(), shufflePayload.getPort(), srcAttemptIdentifier, srcIndex);
+    }
   }
 
   private void processCompositeRoutedDataMovementEvent(CompositeRoutedDataMovementEvent crdme, DataMovementEventPayloadProto shufflePayload, BitSet emptyPartitionsBitSet) throws IOException {
