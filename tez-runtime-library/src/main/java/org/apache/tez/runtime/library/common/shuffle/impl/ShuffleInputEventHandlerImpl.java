@@ -43,6 +43,7 @@ import org.apache.tez.runtime.library.common.InputAttemptIdentifier;
 import org.apache.tez.runtime.library.common.shuffle.FetchedInputAllocator;
 import org.apache.tez.runtime.library.common.shuffle.ShuffleEventHandler;
 import org.apache.tez.runtime.library.common.shuffle.ShuffleUtils;
+import org.apache.tez.runtime.library.common.shuffle.FetchedInput;
 import org.apache.tez.runtime.library.shuffle.impl.ShuffleUserPayloads.DataMovementEventPayloadProto;
 
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -192,9 +193,7 @@ public class ShuffleInputEventHandlerImpl implements ShuffleEventHandler {
     CompositeInputAttemptIdentifier srcAttemptIdentifier = constructInputAttemptIdentifier(dme.getTargetIndex(), 1, dme.getVersion(),
         shufflePayload, (useSharedInputs && srcIndex == 0));
 
-
     if (shufflePayload.hasData()) {
-      //shuffleManager.addKnownInput(shufflePayload.getHost(),shufflePayload.getPort(), srcAttemptIdentifier, srcIndex);
       DataProto dataProto = shufflePayload.getData();
 
       FetchedInput fetchedInput = inputAllocator.allocate(dataProto.getRawLength(),
