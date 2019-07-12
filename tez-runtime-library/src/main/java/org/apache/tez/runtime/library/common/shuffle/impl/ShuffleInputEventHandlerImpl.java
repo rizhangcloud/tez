@@ -20,6 +20,7 @@
 package org.apache.tez.runtime.library.common.shuffle.impl;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.BitSet;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -64,6 +65,7 @@ public class ShuffleInputEventHandlerImpl implements ShuffleEventHandler {
   private final CompressionCodec codec;
   private final boolean ifileReadAhead;
   private final int ifileReadAheadLength;
+  private final boolean verifyDiskChecksum;
   private final boolean useSharedInputs;
   private final InputContext inputContext;
   private final boolean compositeFetch;
@@ -207,19 +209,21 @@ public class ShuffleInputEventHandlerImpl implements ShuffleEventHandler {
       shuffleManager.addKnownInput(shufflePayload.getHost(), shufflePayload.getPort(), srcAttemptIdentifier, srcIndex);
     }
   }
+
   private void moveDataToFetchedInput(DataProto dataProto,
                                       FetchedInput fetchedInput, String hostIdentifier) throws IOException {
     switch (fetchedInput.getType()) {
       case DISK:
         ShuffleUtils.shuffleToDisk(((DiskFetchedInput) fetchedInput).getOutputStream(),
-                hostIdentifier, dataProto.getData().newInput(), dataProto.getCompressedLength(), LOG,
-                fetchedInput.getInputAttemptIdentifier().toString());
+                hostIdentifier, dataProto.getData().newInput(), dataProto.getCompressedLength(),
+                dataProto.getUncompressedLength(), LOG, fetchedInput.getInputAttemptIdentifier(), ifileReadAhead,
+                ifileReadAheadLength, verifyDiskChecksum);
         break;
       case MEMORY:
         ShuffleUtils.shuffleToMemory(((MemoryFetchedInput) fetchedInput).getBytes(),
                 dataProto.getData().newInput(), dataProto.getRawLength(), dataProto.getCompressedLength(),
                 codec, ifileReadAhead, ifileReadAheadLength, LOG,
-                fetchedInput.getInputAttemptIdentifier().toString());
+                 ifileReadAhead, ifileReadAheadLength,fetchedInput.getInputAttemptIdentifier());
         break;
       case WAIT:
       default:
