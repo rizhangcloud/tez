@@ -36,6 +36,7 @@ message DataProto {
   optional int32 raw_length = 1;
   optional int32 compressed_length = 2;
   optional bytes data = 3;
+  optional int32 uncompressed_length = 4;
 }
 
 message InputInformationEventPayloadProto {

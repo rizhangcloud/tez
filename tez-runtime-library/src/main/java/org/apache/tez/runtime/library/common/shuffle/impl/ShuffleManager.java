@@ -668,11 +668,12 @@ public class ShuffleManager implements FetcherCallback {
   public void addCompletedInputWithData(
           InputAttemptIdentifier srcAttemptIdentifier, FetchedInput fetchedInput)
           throws IOException {
-    InputIdentifier inputIdentifier = srcAttemptIdentifier.getInputIdentifier();
-    //int inputIdentifier = srcAttemptIdentifier.getInputIdentifier();
-
-    LOG.info("Received Data via Event: " + srcAttemptIdentifier + " to "
-            + fetchedInput.getType());
+    //InputIdentifier inputIdentifier = srcAttemptIdentifier.getInputIdentifier();
+    int inputIdentifier = srcAttemptIdentifier.getInputIdentifier();
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Received Data via Event: " + srcAttemptIdentifier + " to "
+                      + fetchedInput.getType());
+    }
     // Count irrespective of whether this is a copy of an already fetched input
     lock.lock();
     try {
@@ -682,9 +683,9 @@ public class ShuffleManager implements FetcherCallback {
     }
 
     boolean committed = false;
-    if (!completedInputSet.contains(inputIdentifier)) {
+    if (!completedInputSet.get(inputIdentifier)) {
       synchronized (completedInputSet) {
-        if (!completedInputSet.contains(inputIdentifier)) {
+        if (!completedInputSet.get(inputIdentifier)) {
           fetchedInput.commit();
           committed = true;
           if (!srcAttemptIdentifier.canRetrieveInputInChunks()) {

@@ -65,7 +65,6 @@ public class ShuffleInputEventHandlerImpl implements ShuffleEventHandler {
   private final CompressionCodec codec;
   private final boolean ifileReadAhead;
   private final int ifileReadAheadLength;
-  private final boolean verifyDiskChecksum;
   private final boolean useSharedInputs;
   private final InputContext inputContext;
   private final boolean compositeFetch;
@@ -214,16 +213,18 @@ public class ShuffleInputEventHandlerImpl implements ShuffleEventHandler {
                                       FetchedInput fetchedInput, String hostIdentifier) throws IOException {
     switch (fetchedInput.getType()) {
       case DISK:
+
         ShuffleUtils.shuffleToDisk(((DiskFetchedInput) fetchedInput).getOutputStream(),
                 hostIdentifier, dataProto.getData().newInput(), dataProto.getCompressedLength(),
                 dataProto.getUncompressedLength(), LOG, fetchedInput.getInputAttemptIdentifier(), ifileReadAhead,
-                ifileReadAheadLength, verifyDiskChecksum);
+                ifileReadAheadLength, true);
+
         break;
       case MEMORY:
         ShuffleUtils.shuffleToMemory(((MemoryFetchedInput) fetchedInput).getBytes(),
                 dataProto.getData().newInput(), dataProto.getRawLength(), dataProto.getCompressedLength(),
                 codec, ifileReadAhead, ifileReadAheadLength, LOG,
-                 ifileReadAhead, ifileReadAheadLength,fetchedInput.getInputAttemptIdentifier());
+                 fetchedInput.getInputAttemptIdentifier());
         break;
       case WAIT:
       default:
