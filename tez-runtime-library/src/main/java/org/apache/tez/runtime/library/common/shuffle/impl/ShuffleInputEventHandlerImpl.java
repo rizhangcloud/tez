@@ -44,7 +44,10 @@ import org.apache.tez.runtime.library.common.shuffle.FetchedInputAllocator;
 import org.apache.tez.runtime.library.common.shuffle.ShuffleEventHandler;
 import org.apache.tez.runtime.library.common.shuffle.ShuffleUtils;
 import org.apache.tez.runtime.library.common.shuffle.FetchedInput;
+import org.apache.tez.runtime.library.shuffle.impl.ShuffleUserPayloads.DataProto;
 import org.apache.tez.runtime.library.shuffle.impl.ShuffleUserPayloads.DataMovementEventPayloadProto;
+import org.apache.tez.runtime.library.common.shuffle.DiskFetchedInput;
+import org.apache.tez.runtime.library.common.shuffle.MemoryFetchedInput;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 
@@ -202,6 +205,26 @@ public class ShuffleInputEventHandlerImpl implements ShuffleEventHandler {
       shuffleManager.addCompletedInputWithData(srcAttemptIdentifier, fetchedInput);
     } else {
       shuffleManager.addKnownInput(shufflePayload.getHost(), shufflePayload.getPort(), srcAttemptIdentifier, srcIndex);
+    }
+  }
+  private void moveDataToFetchedInput(DataProto dataProto,
+                                      FetchedInput fetchedInput, String hostIdentifier) throws IOException {
+    switch (fetchedInput.getType()) {
+      case DISK:
+        ShuffleUtils.shuffleToDisk(((DiskFetchedInput) fetchedInput).getOutputStream(),
+                hostIdentifier, dataProto.getData().newInput(), dataProto.getCompressedLength(), LOG,
+                fetchedInput.getInputAttemptIdentifier().toString());
+        break;
+      case MEMORY:
+        ShuffleUtils.shuffleToMemory(((MemoryFetchedInput) fetchedInput).getBytes(),
+                dataProto.getData().newInput(), dataProto.getRawLength(), dataProto.getCompressedLength(),
+                codec, ifileReadAhead, ifileReadAheadLength, LOG,
+                fetchedInput.getInputAttemptIdentifier().toString());
+        break;
+      case WAIT:
+      default:
+        throw new TezUncheckedException("Unexpected type: "
+                + fetchedInput.getType());
     }
   }
 
