@@ -264,6 +264,10 @@ public class ShuffleUtils {
     sb.append("port: " + dmProto.getPort()).append(", ");
     sb.append("pathComponent: " + dmProto.getPathComponent()).append(", ");
     sb.append("runDuration: " + dmProto.getRunDuration());
+    sb.append("runDuration: " + dmProto.getRunDuration()).append(", ");	    sb.append("runDuration: " + dmProto.getRunDuration());
+    if (dmProto.hasData()) {
+      sb.append(", ").append("hasDataInEvent: " + dmProto.hasData());
+    }
     sb.append("]");
     return sb.toString();
   }
