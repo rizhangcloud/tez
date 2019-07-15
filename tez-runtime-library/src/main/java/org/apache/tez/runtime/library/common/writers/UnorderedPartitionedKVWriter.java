@@ -507,7 +507,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
           new ArrayList<WrappedBuffer>(filledBuffers), codec, spilledRecordsCounter,
           spillNumber));
       filledBuffers.clear();
-      Futures.addCallback(future, new SpillCallback(spillNumber));
+      Futures.addCallback(future, new SpillCallback(spillNumber), MoreExecutors.directExecutor());
       // Update once per buffer (instead of every record)
       updateTezCountersAndNotify();
       return true;

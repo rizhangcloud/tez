@@ -323,7 +323,7 @@ public class MockDAGAppMaster extends DAGAppMaster {
             Worker worker = workers.remove();
             worker.setContainerData(cData);
             ListenableFuture<Void> future = executorService.submit(worker);
-            Futures.addCallback(future, worker.getCallback());            
+            Futures.addCallback(future, worker.getCallback(), MoreExecutors.directExecutor());
           } else {
             containers.remove(cData.cId);
           }

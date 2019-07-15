@@ -137,7 +137,7 @@ public class RootInputInitializerManager {
       initializerMap.put(input.getName(), initializerWrapper);
       ListenableFuture<List<Event>> future = executor
           .submit(new InputInitializerCallable(initializerWrapper, dagUgi, appContext));
-      Futures.addCallback(future, createInputInitializerCallback(initializerWrapper));
+      Futures.addCallback(future, createInputInitializerCallback(initializerWrapper), MoreExecutors.directExecutor());
     }
   }
 
