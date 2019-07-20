@@ -124,20 +124,22 @@ public class IFile {
       this.rle = rle;
     }
 
-    public Writer(Configuration conf, Path file,
+    public Writer(Configuration conf, FileSystem rfs, Path file,
         Class keyClass, Class valueClass, CompressionCodec codec, TezCounter writesCounter,
         TezCounter serializedBytesCounter) throws IOException {
-      this(conf, file, keyClass, valueClass, codec, writesCounter,
+      this(conf, rfs, file, keyClass, valueClass, codec, writesCounter,
           serializedBytesCounter, false);
     }
 
-    public Writer(Configuration conf, Path file,
+    public Writer(Configuration conf, FileSystem rfs, Path file,
         Class keyClass, Class valueClass,
         CompressionCodec codec, TezCounter writesCounter, TezCounter serializedBytesCounter,
         boolean rle) throws IOException {
       this.writtenRecordsCounter = writesCounter;
       this.serializedUncompressedBytes = serializedBytesCounter;
-      this.checksumOut = new IFileOutputStream(outputStream);
+
+      //this.checksumOut = new IFileOutputStream(outputStream);//???
+
       this.checksumOut = new IFileOutputStream(out);
       this.start = this.rawOut.getPos();
       this.rle = rle;
@@ -146,11 +148,15 @@ public class IFile {
         if (this.compressor != null) {
           this.compressor.reset();
           this.compressedOut = codec.createOutputStream(checksumOut, compressor);
-          this.out = new FileBackedBoundedByteArrayOutputStream(file);
+          //this.out = new FSDataOutputStream(this.compressedOut,  null);
+          //this.out = new FileBackedBoundedByteArrayOutputStream(file);
+          this.out=new FileBackedBoundedByteArrayOutputStream(this.compressedOut, null, file);
           this.compressOutput = true;
         } else {
           LOG.warn("Could not obtain compressor from CodecPool");
-          this.out = new FSDataOutputStream(checksumOut,null);
+          //??? should be new stream?
+          //this.out = new FSDataOutputStream(checksumOut,null);
+          this.out= new FileBackedBoundedByteArrayOutputStream(file);
         }
       } else {
         //this.out = new FSDataOutputStream(checksumOut,null); //???

@@ -84,8 +84,6 @@ import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.protobuf.ByteString;
 
-import org.apache.tez.runtime.library.common.sort.impl.BufferedDirectOutput;
-
 import static org.apache.tez.runtime.library.common.sort.impl.TezSpillRecord.SPILL_FILE_PERMS;
 
 public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWriter {

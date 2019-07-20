@@ -26,6 +26,7 @@ import java.util.function.Supplier;
 import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.hadoop.io.*;
+import org.apache.tez.runtime.library.common.writers.UnorderedPartitionedKVWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -57,17 +58,35 @@ import org.apache.tez.runtime.library.common.sort.impl.IFileOutputStream;
 @InterfaceAudience.Private
 @InterfaceStability.Unstable
 
+class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
+    private static final Logger LOG = LoggerFactory.getLogger(FileBackedBoundedByteArrayOutputStream.class);
 
-class FileBackedBoundedByteArrayOutputStream extends BoundedByteArrayOutputStream {
-    boolean bufferIsFull;
-    DataOutputStream out;
+    BoundedByteArrayOutputStream memStream;
+    FSDataOutputStream out;
     Path file;
 
-    FileBackedBoundedByteArrayOutputStream(Path file) {
-        super(bufferLimit);
+    boolean bufferIsFull;
+
+    FileSystem fs;
+    CompressionOutputStream compressedOut;
+    Compressor compressor;
+    boolean compressOutput = false;
+
+    public FileBackedBoundedByteArrayOutputStream(OutputStream out, FileSystem.Statistics stats, Path file) {
+        super(out, stats);
         this.file = file;
-        this.fallback=fallback;
-        this.limit=bufferLimit;
+
+        this.memStream = new BoundedByteArrayOutputStream(512);
+        //this.limit=bufferLimit;
+        this.bufferIsFull=false;
+    }
+
+    public FileBackedBoundedByteArrayOutputStream(Path file) {
+        this.memStream = new BoundedByteArrayOutputStream(512);
+        this.file = file;
+
+        //this.fallback=fallback;
+        //this.limit=bufferLimit;
         this.bufferIsFull=false;
     }
 
@@ -82,22 +101,26 @@ class FileBackedBoundedByteArrayOutputStream extends BoundedByteArrayOutputStrea
             out.write(b, off, len);
         }
         try {
-            super.write(b, off, len);
+            memStream.write(b, off, len);
         } catch(EOFException e) {
             checksumOut = new IFileOutputStream(fs.create(file));
             compressor = CodecPool.getCompressor(codec);
             if (this.compressor != null) {
+
+                /* ??? double check the logic*/
                 this.compressor.reset();
                 this.compressedOut = codec.createOutputStream(checksumOut, compressor);
-                this.out = new FileBackedBoundedByteArrayOutputStream(file);
+                this.out = new FSDataOutputStream(file);
                 this.compressOutput = true;
-            } else {
+
+            }
+            else {
                 LOG.warn("Could not obtain compressor from CodecPool");
-                out = new FSDataOutputStream(checksumOut,null);
+                this.out = new FSDataOutputStream(checksumOut,null);
                 }
-                bufferIsFull = true;
-                out.write(getBuffer(), 0, len);
-                out.write(b, off, len);
+
+            bufferIsFull = true;
+            out.write(b, off, len);
             }
     }
 
