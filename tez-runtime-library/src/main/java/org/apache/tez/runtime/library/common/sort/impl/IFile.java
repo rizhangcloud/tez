@@ -138,6 +138,7 @@ public class IFile {
       this.writtenRecordsCounter = writesCounter;
       this.serializedUncompressedBytes = serializedBytesCounter;
       this.checksumOut = new IFileOutputStream(outputStream);
+      this.checksumOut = new IFileOutputStream(out);
       this.start = this.rawOut.getPos();
       this.rle = rle;
       if (codec != null) {
@@ -152,10 +153,11 @@ public class IFile {
           this.out = new FSDataOutputStream(checksumOut,null);
         }
       } else {
-        this.out = new FSDataOutputStream(checksumOut,null);
-        this.out2 = new (out);
+        //this.out = new FSDataOutputStream(checksumOut,null); //???
+        this.out = new FileBackedBoundedByteArrayOutputStream(checksumOut,null);
       }
-      writeHeader(outputStream);
+      //writeHeader(outputStream); //??
+      writeHeader(out);
 
       if (keyClass != null) {
         this.closeSerializers = true;
@@ -423,7 +425,8 @@ public class IFile {
        * {RLE, VL2, V2, VL3, V3, ...V_END_MARKER}
        */
       if (prevKey != REPEAT_KEY) {
-        WritableUtils.writeVInt(out2, RLE_MARKER);
+        //WritableUtils.writeVInt(out2, RLE_MARKER); //??
+        WritableUtils.writeVInt(out, RLE_MARKER);
         decompressedBytesWritten += RLE_MARKER_SIZE;
         rleWritten++;
       }

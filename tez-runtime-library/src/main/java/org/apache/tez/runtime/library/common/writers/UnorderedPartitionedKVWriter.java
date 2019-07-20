@@ -291,7 +291,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
         skipBuffers = false;
         writer = null;
     }
-    LOG.info(destNameTrimmed + ": "
+
     LOG.info(destNameTrimmed + ": "
         + "numBuffers=" + numBuffers
         + ", sizePerBuffer=" + sizePerBuffer
@@ -753,7 +753,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
             eventList.add(generateDMEvent(false, -1, false, outputContext
                     .getUniqueIdentifier(), emptyPartitions));
           } else {
-            eventList.add(generateDMEvent2(false, -1, false, writer.getDataBuffer()))
+            eventList.add(generateDMEvent2(false, -1, false, writer.getDataBuffer()));
           }
           return eventList;
         }
@@ -879,7 +879,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
     DataMovementEventPayloadProto.Builder payloadBuilder = DataMovementEventPayloadProto
             .newBuilder();
 
-    assert(isLastSpill, true);
+    //assert(isLastSpill, true); //???
 
     if (addSpillDetails) {
       payloadBuilder.setSpillId(spillId);

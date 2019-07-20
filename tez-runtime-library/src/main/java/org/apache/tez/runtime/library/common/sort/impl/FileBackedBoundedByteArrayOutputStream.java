@@ -47,8 +47,8 @@ import org.apache.tez.common.counters.TezCounter;
 import org.apache.tez.runtime.library.common.sort.impl.IFileOutputStream;
 
 /**
- * <code>BufferedDirectOutput</code> extends the <code> Writer</code> inside
- * <code>IFile</code> provide a new writer entrance in which if the data is
+ * <code>FileBackedBoundedByteArrayOutputStream</code> extends the <code> BoundedByteArrayOutputStream</code>
+ * provide a new write  in which if the data is
  * less than 512 bytes, it piggybacks the data to the event; if the data size is
  * more than 512 bytes, it uses the fs stream based writer in <code>Writer</code>
  * inside <code>IFile</code>
