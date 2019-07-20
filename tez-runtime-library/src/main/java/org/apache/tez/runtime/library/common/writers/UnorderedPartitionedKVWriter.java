@@ -84,6 +84,8 @@ import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.protobuf.ByteString;
 
+import org.apache.tez.runtime.library.common.sort.impl.BufferedDirectOutput;
+
 import static org.apache.tez.runtime.library.common.sort.impl.TezSpillRecord.SPILL_FILE_PERMS;
 
 public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWriter {
@@ -279,15 +281,17 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
       finalOutPath = outputFileHandler.getOutputFileForWrite();
       finalIndexPath = outputFileHandler.getOutputIndexFileForWrite(indexFileSizeEstimate);
       skipBuffers = true;
+
       writer = new IFile.Writer(conf, rfs, finalOutPath, keyClass, valClass,
-          codec, outputRecordsCounter, outputRecordBytesCounter);
+            codec, outputRecordsCounter, outputRecordBytesCounter);
       if (!SPILL_FILE_PERMS.equals(SPILL_FILE_PERMS.applyUMask(FsPermission.getUMask(conf)))) {
         rfs.setPermission(finalOutPath, SPILL_FILE_PERMS);
       }
     } else {
-      skipBuffers = false;
-      writer = null;
+        skipBuffers = false;
+        writer = null;
     }
+    LOG.info(destNameTrimmed + ": "
     LOG.info(destNameTrimmed + ": "
         + "numBuffers=" + numBuffers
         + ", sizePerBuffer=" + sizePerBuffer
@@ -719,12 +723,14 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
       if (!pipelinedShuffle) {
         if (skipBuffers) {
           writer.close();
-          long rawLen = writer.getRawLength();
-          long compLen = writer.getCompressedLength();
-          TezIndexRecord rec = new TezIndexRecord(0, rawLen, compLen);
-          TezSpillRecord sr = new TezSpillRecord(1);
-          sr.putIndex(rec, 0);
-          sr.writeToFile(finalIndexPath, conf);
+          if (writer.hasSpilled()) {
+            long rawLen = writer.getRawLength();
+            long compLen = writer.getCompressedLength();
+            TezIndexRecord rec = new TezIndexRecord(0, rawLen, compLen);
+            TezSpillRecord sr = new TezSpillRecord(1);
+            sr.putIndex(rec, 0);
+            sr.writeToFile(finalIndexPath, conf);
+          }
 
           BitSet emptyPartitions = new BitSet();
           if (outputRecordsCounter.getValue() == 0) {
@@ -742,8 +748,13 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
             fileOutputBytesCounter.increment(compLen + indexFileSizeEstimate);
           }
           eventList.add(generateVMEvent());
-          eventList.add(generateDMEvent(false, -1, false, outputContext
-              .getUniqueIdentifier(), emptyPartitions));
+          // generateDMEvent2 or generateDMEvent
+          if (writer.hasSpilled()) {
+            eventList.add(generateDMEvent(false, -1, false, outputContext
+                    .getUniqueIdentifier(), emptyPartitions));
+          } else {
+            eventList.add(generateDMEvent2(false, -1, false, writer.getDataBuffer()))
+          }
           return eventList;
         }
 
@@ -856,6 +867,26 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
       payloadBuilder.setLastEvent(isLastSpill);
     }
 
+    ByteBuffer payload = payloadBuilder.build().toByteString().asReadOnlyByteBuffer();
+    return CompositeDataMovementEvent.create(0, numPartitions, payload);
+  }
+
+  private Event generateDMEvent2(boolean addSpillDetails, int spillId,
+                                boolean isLastSpill,  byte[] data)
+          throws IOException {
+
+    outputContext.notifyProgress();
+    DataMovementEventPayloadProto.Builder payloadBuilder = DataMovementEventPayloadProto
+            .newBuilder();
+
+    assert(isLastSpill, true);
+
+    if (addSpillDetails) {
+      payloadBuilder.setSpillId(spillId);
+      payloadBuilder.setLastEvent(isLastSpill);
+    }
+    //cannot send compressed data
+    payloadBuilder.setData(data, datasize );
     ByteBuffer payload = payloadBuilder.build().toByteString().asReadOnlyByteBuffer();
     return CompositeDataMovementEvent.create(0, numPartitions, payload);
   }

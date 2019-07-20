@@ -78,7 +78,7 @@ public class IFile {
   @InterfaceStability.Unstable
   @SuppressWarnings({"unchecked", "rawtypes"})
   public static class Writer {
-    protected DataOutputStream out;
+    protected FileBackedBoundedByteArrayOutputStream out;
     boolean ownOutputStream = false;
     long start = 0;
     FSDataOutputStream rawOut;
@@ -118,34 +118,23 @@ public class IFile {
     protected final boolean rle;
 
 
-    public Writer(Configuration conf, FileSystem fs, Path file,
-                  Class keyClass, Class valueClass,
-                  CompressionCodec codec,
-                  TezCounter writesCounter,
-                  TezCounter serializedBytesCounter) throws IOException {
-      this(conf, fs.create(file), keyClass, valueClass, codec,
-           writesCounter, serializedBytesCounter);
-      ownOutputStream = true;
-    }
-
     protected Writer(TezCounter writesCounter, TezCounter serializedBytesCounter, boolean rle) {
       writtenRecordsCounter = writesCounter;
       serializedUncompressedBytes = serializedBytesCounter;
       this.rle = rle;
     }
 
-    public Writer(Configuration conf, FSDataOutputStream outputStream,
+    public Writer(Configuration conf, Path file,
         Class keyClass, Class valueClass, CompressionCodec codec, TezCounter writesCounter,
         TezCounter serializedBytesCounter) throws IOException {
-      this(conf, outputStream, keyClass, valueClass, codec, writesCounter,
+      this(conf, file, keyClass, valueClass, codec, writesCounter,
           serializedBytesCounter, false);
     }
 
-    public Writer(Configuration conf, FSDataOutputStream outputStream,
+    public Writer(Configuration conf, Path file,
         Class keyClass, Class valueClass,
         CompressionCodec codec, TezCounter writesCounter, TezCounter serializedBytesCounter,
         boolean rle) throws IOException {
-      this.rawOut = outputStream;
       this.writtenRecordsCounter = writesCounter;
       this.serializedUncompressedBytes = serializedBytesCounter;
       this.checksumOut = new IFileOutputStream(outputStream);
@@ -156,7 +145,7 @@ public class IFile {
         if (this.compressor != null) {
           this.compressor.reset();
           this.compressedOut = codec.createOutputStream(checksumOut, compressor);
-          this.out = new FSDataOutputStream(this.compressedOut,  null);
+          this.out = new FileBackedBoundedByteArrayOutputStream(file);
           this.compressOutput = true;
         } else {
           LOG.warn("Could not obtain compressor from CodecPool");
@@ -164,6 +153,7 @@ public class IFile {
         }
       } else {
         this.out = new FSDataOutputStream(checksumOut,null);
+        this.out2 = new (out);
       }
       writeHeader(outputStream);
 
@@ -433,7 +423,7 @@ public class IFile {
        * {RLE, VL2, V2, VL3, V3, ...V_END_MARKER}
        */
       if (prevKey != REPEAT_KEY) {
-        WritableUtils.writeVInt(out, RLE_MARKER);
+        WritableUtils.writeVInt(out2, RLE_MARKER);
         decompressedBytesWritten += RLE_MARKER_SIZE;
         rleWritten++;
       }
