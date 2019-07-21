@@ -60,42 +60,52 @@ import org.apache.tez.runtime.library.common.sort.impl.IFileOutputStream;
 
 class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
     private static final Logger LOG = LoggerFactory.getLogger(FileBackedBoundedByteArrayOutputStream.class);
+    static final byte[] HEADER = new byte[] { (byte) 'T', (byte) 'I',
+            (byte) 'F' , (byte) 0};
+    boolean headerWritten = false;
 
     BoundedByteArrayOutputStream memStream;
     FSDataOutputStream out;
+    FileSystem fs;
     Path file;
 
     boolean bufferIsFull;
 
-    FileSystem fs;
+    FSDataOutputStream rawOut;
+
+
+    CompressionCodec codec;
+
     CompressionOutputStream compressedOut;
     Compressor compressor;
     boolean compressOutput = false;
 
-    public FileBackedBoundedByteArrayOutputStream(OutputStream out, FileSystem.Statistics stats, Path file) {
+    // de-dup keys or not
+    protected final boolean rle;
+
+    IFileOutputStream checksumOut;
+    long start = 0;
+
+
+
+    public FileBackedBoundedByteArrayOutputStream(OutputStream out, FileSystem.Statistics stats, Path file,
+                                                  CompressionCodec codec, boolean rle) {
         super(out, stats);
         this.file = file;
 
         this.memStream = new BoundedByteArrayOutputStream(512);
         //this.limit=bufferLimit;
         this.bufferIsFull=false;
+
+        this.codec = codec;
+        this.rle = rle;
     }
 
-    public FileBackedBoundedByteArrayOutputStream(Path file) {
-        this.memStream = new BoundedByteArrayOutputStream(512);
-        this.file = file;
-
-        //this.fallback=fallback;
-        //this.limit=bufferLimit;
-        this.bufferIsFull=false;
-    }
 
     @Override
     public void write(byte[] b, int off, int len) throws IOException {
-        IFileOutputStream checksumOut;
-        CompressionOutputStream compressedOut;
-        Compressor compressor;
-        boolean compressOutput = false;
+
+        FSDataOutputStream outputStream;
 
         if (bufferIsFull) {
             out.write(b, off, len);
@@ -103,29 +113,47 @@ class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
         try {
             memStream.write(b, off, len);
         } catch(EOFException e) {
-            checksumOut = new IFileOutputStream(fs.create(file));
-            compressor = CodecPool.getCompressor(codec);
-            if (this.compressor != null) {
 
-                /* ??? double check the logic*/
-                this.compressor.reset();
-                this.compressedOut = codec.createOutputStream(checksumOut, compressor);
-                this.out = new FSDataOutputStream(file);
-                this.compressOutput = true;
+            /* The data in the buffer is over the limit, so creates a file based stream */
 
-            }
-            else {
-                LOG.warn("Could not obtain compressor from CodecPool");
-                this.out = new FSDataOutputStream(checksumOut,null);
+            outputStream = fs.create(file);
+            this.rawOut = outputStream;
+            this.checksumOut = new IFileOutputStream(outputStream);
+
+            this.start = this.rawOut.getPos(); //??? how to return to the IFile.writer caller?
+
+            if (this.codec != null) {
+                this.compressor = CodecPool.getCompressor(codec);
+                if (this.compressor != null) {
+                    this.compressor.reset();
+                    this.compressedOut = codec.createOutputStream(this.checksumOut, this.compressor);
+                    this.out = new FSDataOutputStream(this.compressedOut,  null);
+                    this.compressOutput = true;
+                } else {
+                    LOG.warn("Could not obtain compressor from CodecPool");
+                    this.out = new FSDataOutputStream(checksumOut,null);
                 }
+            } else {
+                this.out = new FSDataOutputStream(checksumOut,null);
+            }
+            writeHeader(this.out);
+
+            /* end of creating file based stream */
 
             bufferIsFull = true;
             out.write(b, off, len);
             }
     }
 
+    protected void writeHeader(OutputStream outputStream) throws IOException {
+        if (!headerWritten) {
+            outputStream.write(HEADER, 0, HEADER.length - 1);
+            outputStream.write((compressOutput) ? (byte) 1 : (byte) 0);
+            headerWritten = true;
+        }
+    }
+
     public boolean hasSpilled() {
             return bufferIsFull;
         }
-
-    }
+}

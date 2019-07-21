@@ -118,52 +118,68 @@ public class IFile {
     protected final boolean rle;
 
 
+    /* Note: the original first Writer constructor which creates file */
+    /*
+    public Writer(Configuration conf, FileSystem fs, Path file,
+                  Class keyClass, Class valueClass,
+                  CompressionCodec codec,
+                  TezCounter writesCounter,
+                  TezCounter serializedBytesCounter) throws IOException {
+      this(conf, fs.create(file), keyClass, valueClass, codec,
+              writesCounter, serializedBytesCounter);
+      ownOutputStream = true;
+    }
+     */
+
+    /* Note: the new first Writer constructor which does not create file. */
+    public Writer(Configuration conf, FileSystem fs, Path file,
+                  Class keyClass, Class valueClass,
+                  CompressionCodec codec,
+                  TezCounter writesCounter,
+                  TezCounter serializedBytesCounter) throws IOException {
+      this(conf, fs, file, keyClass, valueClass, codec,
+              writesCounter, serializedBytesCounter, false);
+
+      ownOutputStream = true;
+    }
+
+    /* Note: the second Writer constructor */
     protected Writer(TezCounter writesCounter, TezCounter serializedBytesCounter, boolean rle) {
       writtenRecordsCounter = writesCounter;
       serializedUncompressedBytes = serializedBytesCounter;
       this.rle = rle;
     }
 
-    public Writer(Configuration conf, FileSystem rfs, Path file,
-        Class keyClass, Class valueClass, CompressionCodec codec, TezCounter writesCounter,
-        TezCounter serializedBytesCounter) throws IOException {
-      this(conf, rfs, file, keyClass, valueClass, codec, writesCounter,
-          serializedBytesCounter, false);
+    /* The old third constructor, which is obsolete now. Now can not input the FSDataOutputStream to a
+    *  Writer constructor. */
+    /*
+    public Writer(Configuration conf, FSDataOutputStream outputStream,
+                  Class keyClass, Class valueClass, CompressionCodec codec, TezCounter writesCounter,
+                  TezCounter serializedBytesCounter) throws IOException {
+      this(conf, outputStream, keyClass, valueClass, codec, writesCounter,
+              serializedBytesCounter, false);
     }
+     */
 
+    /* The new forth constructor, which receives fs, and file, but does not create file. It uses the new
+       stream.
+     */
     public Writer(Configuration conf, FileSystem rfs, Path file,
         Class keyClass, Class valueClass,
         CompressionCodec codec, TezCounter writesCounter, TezCounter serializedBytesCounter,
         boolean rle) throws IOException {
+
+      //this.rawOut = outputStream;//???: how to get the rawout?
       this.writtenRecordsCounter = writesCounter;
       this.serializedUncompressedBytes = serializedBytesCounter;
 
-      //this.checksumOut = new IFileOutputStream(outputStream);//???
-
-      this.checksumOut = new IFileOutputStream(out);
-      this.start = this.rawOut.getPos();
+      this.start = this.rawOut.getPos(); //??? how to get this value?
       this.rle = rle;
-      if (codec != null) {
-        this.compressor = CodecPool.getCompressor(codec);
-        if (this.compressor != null) {
-          this.compressor.reset();
-          this.compressedOut = codec.createOutputStream(checksumOut, compressor);
-          //this.out = new FSDataOutputStream(this.compressedOut,  null);
-          //this.out = new FileBackedBoundedByteArrayOutputStream(file);
-          this.out=new FileBackedBoundedByteArrayOutputStream(this.compressedOut, null, file);
-          this.compressOutput = true;
-        } else {
-          LOG.warn("Could not obtain compressor from CodecPool");
-          //??? should be new stream?
-          //this.out = new FSDataOutputStream(checksumOut,null);
-          this.out= new FileBackedBoundedByteArrayOutputStream(file);
-        }
-      } else {
-        //this.out = new FSDataOutputStream(checksumOut,null); //???
-        this.out = new FileBackedBoundedByteArrayOutputStream(checksumOut,null);
-      }
-      //writeHeader(outputStream); //??
-      writeHeader(out);
+
+      //this.out=new FileBackedBoundedByteArrayOutputStream(this.compressedOut, null, file, codec, rle);
+      this.out=new FileBackedBoundedByteArrayOutputStream(null, null, file, codec, rle);
+
+      //writeHeader(outputStream); // ??? moved inside the new stream
 
       if (keyClass != null) {
         this.closeSerializers = true;
