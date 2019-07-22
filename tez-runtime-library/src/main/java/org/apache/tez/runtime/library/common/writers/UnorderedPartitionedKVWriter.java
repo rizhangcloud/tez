@@ -884,7 +884,8 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
       payloadBuilder.setLastEvent(isLastSpill);
     }
     //cannot send compressed data
-    payloadBuilder.setData(data, datasize );
+    //payloadBuilder.setData(data, datasize );
+    payloadBuilder.setData(payloadBuilder.getData());//??
     ByteBuffer payload = payloadBuilder.build().toByteString().asReadOnlyByteBuffer();
     return CompositeDataMovementEvent.create(0, numPartitions, payload);
   }
