@@ -88,9 +88,10 @@ class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
 
 
 
-    public FileBackedBoundedByteArrayOutputStream(OutputStream out, FileSystem.Statistics stats, Path file,
-                                                  CompressionCodec codec, boolean rle) {
+    public FileBackedBoundedByteArrayOutputStream(OutputStream out, FileSystem.Statistics stats,FileSystem rfs,
+                                                  Path file, CompressionCodec codec, boolean rle) {
         super(out, stats);
+        this.fs = rfs;
         this.file = file;
 
         this.memStream = new BoundedByteArrayOutputStream(512);
@@ -100,6 +101,7 @@ class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
         this.codec = codec;
         this.rle = rle;
     }
+
 
 
     @Override
@@ -113,9 +115,7 @@ class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
         try {
             memStream.write(b, off, len);
         } catch(EOFException e) {
-
             /* The data in the buffer is over the limit, so creates a file based stream */
-
             outputStream = fs.create(file);
             this.rawOut = outputStream;
             this.checksumOut = new IFileOutputStream(outputStream);
@@ -137,7 +137,6 @@ class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
                 this.out = new FSDataOutputStream(checksumOut,null);
             }
             writeHeader(this.out);
-
             /* end of creating file based stream */
 
             bufferIsFull = true;
@@ -156,4 +155,11 @@ class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
     public boolean hasSpilled() {
             return bufferIsFull;
         }
+
+    public void close() throws IOException {
+        /* if the buffer is full, close the memory buffer */
+        if(bufferIsFull)
+            this.out.close();
+    }
+
 }

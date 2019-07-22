@@ -454,7 +454,12 @@ public class TestValuesIterator {
       paths[i] = new Path(baseDir, "ifile_" + i + ".out");
       FSDataOutputStream out = fs.create(paths[i]);
       //write data with RLE
+      /* ??? use the old Writer
       IFile.Writer writer = new IFile.Writer(conf, out, keyClass, valClass, null, null, null, true);
+      */
+      IFile.Writer writer = new IFile.Writer(conf, fs, paths[i], keyClass, valClass, null, null, null, true);
+
+
       Map<Writable, Writable> data = createData();
 
       for (Map.Entry<Writable, Writable> entry : data.entrySet()) {

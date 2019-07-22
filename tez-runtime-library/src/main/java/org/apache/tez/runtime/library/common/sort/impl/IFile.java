@@ -78,7 +78,9 @@ public class IFile {
   @InterfaceStability.Unstable
   @SuppressWarnings({"unchecked", "rawtypes"})
   public static class Writer {
-    protected FileBackedBoundedByteArrayOutputStream out;
+    //protected FileBackedBoundedByteArrayOutputStream out;
+    protected FSDataOutputStream out;
+
     boolean ownOutputStream = false;
     long start = 0;
     FSDataOutputStream rawOut;
@@ -152,14 +154,54 @@ public class IFile {
 
     /* The old third constructor, which is obsolete now. Now can not input the FSDataOutputStream to a
     *  Writer constructor. */
-    /*
     public Writer(Configuration conf, FSDataOutputStream outputStream,
                   Class keyClass, Class valueClass, CompressionCodec codec, TezCounter writesCounter,
                   TezCounter serializedBytesCounter) throws IOException {
       this(conf, outputStream, keyClass, valueClass, codec, writesCounter,
               serializedBytesCounter, false);
     }
-     */
+
+
+    /* The old forth constructor */
+    public Writer(Configuration conf, FSDataOutputStream outputStream,
+                  Class keyClass, Class valueClass,
+                  CompressionCodec codec, TezCounter writesCounter, TezCounter serializedBytesCounter,
+                  boolean rle) throws IOException {
+      this.rawOut = outputStream;
+      this.writtenRecordsCounter = writesCounter;
+      this.serializedUncompressedBytes = serializedBytesCounter;
+      this.checksumOut = new IFileOutputStream(outputStream);
+      this.start = this.rawOut.getPos();
+      this.rle = rle;
+      if (codec != null) {
+        this.compressor = CodecPool.getCompressor(codec);
+        if (this.compressor != null) {
+          this.compressor.reset();
+          this.compressedOut = codec.createOutputStream(checksumOut, compressor);
+          this.out = new FSDataOutputStream(this.compressedOut,  null);
+          this.compressOutput = true;
+        } else {
+          LOG.warn("Could not obtain compressor from CodecPool");
+          this.out = new FSDataOutputStream(checksumOut,null);
+        }
+      } else {
+        this.out = new FSDataOutputStream(checksumOut,null);
+      }
+      writeHeader(outputStream);
+
+      if (keyClass != null) {
+        this.closeSerializers = true;
+        SerializationFactory serializationFactory =
+                new SerializationFactory(conf);
+        this.keySerializer = serializationFactory.getSerializer(keyClass);
+        this.keySerializer.open(buffer);
+        this.valueSerializer = serializationFactory.getSerializer(valueClass);
+        this.valueSerializer.open(buffer);
+      } else {
+        this.closeSerializers = false;
+      }
+    }
+
 
     /* The new forth constructor, which receives fs, and file, but does not create file. It uses the new
        stream.
@@ -177,7 +219,7 @@ public class IFile {
       this.rle = rle;
 
       //this.out=new FileBackedBoundedByteArrayOutputStream(this.compressedOut, null, file, codec, rle);
-      this.out=new FileBackedBoundedByteArrayOutputStream(null, null, file, codec, rle);
+      this.out=new FileBackedBoundedByteArrayOutputStream(null, null, rfs, file, codec, rle);
 
       //writeHeader(outputStream); // ??? moved inside the new stream
 

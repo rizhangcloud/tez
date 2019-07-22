@@ -130,9 +130,15 @@ public class TestUnorderedKVReader {
   }
 
   private void createIFile(Path path, int recordCount) throws IOException {
+
+    /* ??? old Writer
     FSDataOutputStream out = localFs.create(path);
     IFile.Writer writer =
         new IFile.Writer(defaultConf, out, Text.class, Text.class, null, null, null, true);
+    */
+    IFile.Writer writer =
+            new IFile.Writer(defaultConf, localFs, path, Text.class, Text.class, null, null, null, true);
+
 
     for (int i = 0; i < recordCount; i++) {
       writer.append(new Text("Key_" + i), new Text("Value_" + i));
@@ -140,7 +146,10 @@ public class TestUnorderedKVReader {
     writer.close();
     rawLen = writer.getRawLength();
     compLen = writer.getCompressedLength();
-    out.close();
+
+    /*??? because use the new stream */
+    //out.close();
+    writer.getOutputStream().close();
   }
 
   @Before
