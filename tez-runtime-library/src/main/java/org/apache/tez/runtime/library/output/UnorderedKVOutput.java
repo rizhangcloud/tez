@@ -48,7 +48,18 @@ import org.apache.tez.runtime.library.api.TezRuntimeConfiguration;
 import org.apache.tez.runtime.library.common.MemoryUpdateCallbackHandler;
 import org.apache.tez.runtime.library.common.writers.UnorderedPartitionedKVWriter;
 
+import org.apache.tez.runtime.api.events.DataMovementEvent;
+import org.apache.tez.runtime.library.shuffle.impl.ShuffleUserPayloads.DataMovementEventPayloadProto;
+import org.apache.tez.runtime.library.shuffle.impl.ShuffleUserPayloads.DataProto;
+import java.util.BitSet;
+import java.nio.ByteBuffer;
+import org.apache.tez.common.TezUtilsInternal;
+import org.apache.tez.dag.api.TezConstants;
+
 import com.google.common.annotations.VisibleForTesting;
+
+import com.google.protobuf.ByteString;
+import com.google.common.collect.Lists;
 
 /**
  * {@link UnorderedKVOutput} is a {@link LogicalOutput} that writes key
@@ -67,6 +78,9 @@ public class UnorderedKVOutput extends AbstractLogicalOutput {
   
   private MemoryUpdateCallbackHandler memoryUpdateCallbackHandler;
   private final AtomicBoolean isStarted = new AtomicBoolean(false);
+
+  private boolean dataViaEventsEnabled;
+  private int dataViaEventsMaxSize;
 
   public UnorderedKVOutput(OutputContext outputContext, int numPhysicalOutputs) {
     super(outputContext, numPhysicalOutputs);
@@ -93,7 +107,16 @@ public class UnorderedKVOutput extends AbstractLogicalOutput {
         UnorderedPartitionedKVWriter.getInitialMemoryRequirement(conf, getContext()
             .getTotalMemoryAvailableToTask()) : 0;
     getContext().requestInitialMemory(memRequestSize, memoryUpdateCallbackHandler);
-    
+
+    this.dataViaEventsEnabled = conf.getBoolean(TezRuntimeConfiguration.TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_ENABLED,
+            TezRuntimeConfiguration.TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_ENABLED_DEFAULT);
+    this.dataViaEventsMaxSize = conf.getInt(TezRuntimeConfiguration.TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_MAX_SIZE,
+            TezRuntimeConfiguration.TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_MAX_SIZE_DEFAULT);
+    LOG.info(this.getClass().getSimpleName() + " running with params -> "+ "dataViaEventsEnabled: " +
+            dataViaEventsEnabled       + ", dataViaEventsMaxSize: " +dataViaEventsMaxSize);
+
+    /*? deprecated ? used in TEZ-2196 */
+    /*this.kvWriter = new FileBasedKVWriter(getContext(), conf);*/
     return Collections.emptyList();
   }
 
@@ -128,24 +151,82 @@ public class UnorderedKVOutput extends AbstractLogicalOutput {
       //TODO: Do we need to support sending payloads via events?
       returnEvents = kvWriter.close();
       kvWriter = null;
+
+      /* start supporting sending payloads via events */
+      //boolean outputGenerated = this.kvWriter.close();
+      DataMovementEventPayloadProto.Builder payloadBuilder = DataMovementEventPayloadProto.newBuilder();
+      //LOG.info("Closing KVOutput: RawLength: " + this.kvWriter.getRawLength()
+      //        + ", CompressedLength: " + this.kvWriter.getCompressedLength());
+
+      /*
+      if (dataViaEventsEnabled && (returnEvents.size()>0) && this.kvWriter.getCompressedLength() <= dataViaEventsMaxSize) {
+        LOG.info("Serialzing actual data into DataMovementEvent, dataSize: " + this.kvWriter.getCompressedLength());
+        byte[] data = this.kvWriter.getData();
+
+        DataProto.Builder dataProtoBuilder = DataProto.newBuilder();
+
+        dataProtoBuilder.setData(ByteString.copyFrom(data));
+        dataProtoBuilder.setRawLength((int) this.kvWriter.getRawLength());
+        dataProtoBuilder.setCompressedLength((int) this.kvWriter.getCompressedLength());
+        payloadBuilder.setData(dataProtoBuilder.build());
+      }
+       */
+
+      // Set the list of empty partitions - single partition on this case.
+      if (returnEvents.size()==0) {
+        LOG.info("No output was generated");
+        BitSet emptyPartitions = new BitSet();
+        emptyPartitions.set(0);
+        ByteString emptyPartitionsBytesString =
+                TezCommonUtils.compressByteArrayToByteString(TezUtilsInternal.toByteArray(emptyPartitions));
+        payloadBuilder.setEmptyPartitions(emptyPartitionsBytesString);
+      }
+
+      if (returnEvents.size()>0) {
+        String host = getHost();
+        ByteBuffer shuffleMetadata = getContext()
+                .getServiceProviderMetaData(conf.get(TezConstants.TEZ_SHUFFLE_HANDLER_SERVICE_ID));
+
+        int shufflePort = ShuffleUtils
+                .deserializeShuffleProviderMetaData(shuffleMetadata);
+        payloadBuilder.setHost(host);
+        payloadBuilder.setPort(shufflePort);
+        payloadBuilder.setPathComponent(getContext().getUniqueIdentifier());
+      }
+
+      DataMovementEventPayloadProto payloadProto = payloadBuilder.build();
+
+      DataMovementEvent dmEvent = DataMovementEvent.create(0, payloadProto.toByteString().asReadOnlyByteBuffer());
+      /*List<Event> events = Lists.newArrayListWithCapacity(1);
+      events.add(dmEvent);
+      returnEvents.add(dmlEvent);
+      return events;
+      */
+
+      returnEvents = new LinkedList<Event>();
+      returnEvents.add(dmEvent);
+
+      /* end supporting sending payloads via events */
+
     } else {
       LOG.warn(getContext().getDestinationVertexName() +
-          ": Attempting to close output {} of type {} before it was started. Generating empty events",
-          getContext().getDestinationVertexName(), this.getClass().getSimpleName());
+                      ": Attempting to close output {} of type {} before it was started. Generating empty events",
+              getContext().getDestinationVertexName(), this.getClass().getSimpleName());
       returnEvents = new LinkedList<Event>();
       ShuffleUtils
-          .generateEventsForNonStartedOutput(returnEvents, getNumPhysicalOutputs(), getContext(),
-              false, false, TezCommonUtils.newBestCompressionDeflater());
+              .generateEventsForNonStartedOutput(returnEvents, getNumPhysicalOutputs(), getContext(),
+                      false, false, TezCommonUtils.newBestCompressionDeflater());
     }
 
     // This works for non-started outputs since new counters will be created with an initial value of 0
     long outputSize = getContext().getCounters().findCounter(TaskCounter.OUTPUT_BYTES).getValue();
     getContext().getStatisticsReporter().reportDataSize(outputSize);
     long outputRecords = getContext().getCounters()
-        .findCounter(TaskCounter.OUTPUT_RECORDS).getValue();
+            .findCounter(TaskCounter.OUTPUT_RECORDS).getValue();
     getContext().getStatisticsReporter().reportItemsProcessed(outputRecords);
 
     return returnEvents;
+
   }
 
   @VisibleForTesting

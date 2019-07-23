@@ -50,6 +50,8 @@ import org.apache.hadoop.io.serializer.SerializationFactory;
 import org.apache.hadoop.io.serializer.Serializer;
 import org.apache.tez.common.counters.TezCounter;
 
+import org.apache.tez.runtime.library.common.sort.impl.FileBackedBoundedByteArrayOutputStream;
+
 /**
  * <code>IFile</code> is the simple <key-len, value-len, key, value> format
  * for the intermediate map-outputs in Map-Reduce.
@@ -112,6 +114,8 @@ public class IFile {
     boolean headerWritten = false;
     @VisibleForTesting
     boolean sameKey = false;
+
+    boolean isSpilled=false;
 
     final int RLE_MARKER_SIZE = WritableUtils.getVIntSize(RLE_MARKER);
     final int V_END_MARKER_SIZE = WritableUtils.getVIntSize(V_END_MARKER);
@@ -215,11 +219,13 @@ public class IFile {
       this.writtenRecordsCounter = writesCounter;
       this.serializedUncompressedBytes = serializedBytesCounter;
 
-      this.start = this.rawOut.getPos(); //??? how to get this value?
+      //this.start = this.rawOut.getPos(); //??? how to get this value?
+      this.start=0;
       this.rle = rle;
 
       //this.out=new FileBackedBoundedByteArrayOutputStream(this.compressedOut, null, file, codec, rle);
       this.out=new FileBackedBoundedByteArrayOutputStream(null, null, rfs, file, codec, rle);
+      this.isSpilled = ((FileBackedBoundedByteArrayOutputStream)this.out).hasSpilled();
 
       //writeHeader(outputStream); // ??? moved inside the new stream
 
@@ -248,6 +254,10 @@ public class IFile {
       }
     }
 
+
+    public boolean hasSpilled() {
+      return this.isSpilled;
+    }
     public void close() throws IOException {
       if (closed.getAndSet(true)) {
         throw new IOException("Writer was already closed earlier");

@@ -777,9 +777,9 @@ public class PipelinedSorter extends ExternalSorter {
       }
       //The output stream for the final single output file
       /*??? the old Writer */
-      /*
+
       FSDataOutputStream finalOut = rfs.create(finalOutputFile, true, 4096);
-      */
+
       if (!SPILL_FILE_PERMS.equals(SPILL_FILE_PERMS.applyUMask(FsPermission.getUMask(conf)))) {
         rfs.setPermission(finalOutputFile, SPILL_FILE_PERMS);
       }

@@ -70,6 +70,7 @@ import org.apache.tez.runtime.library.common.sort.impl.TezIndexRecord;
 import org.apache.tez.runtime.library.common.sort.impl.IFile.Writer;
 import org.apache.tez.runtime.library.common.sort.impl.TezSpillRecord;
 import org.apache.tez.runtime.library.common.shuffle.ShuffleUtils;
+import org.apache.tez.runtime.library.shuffle.impl.ShuffleUserPayloads;
 import org.apache.tez.runtime.library.shuffle.impl.ShuffleUserPayloads.DataMovementEventPayloadProto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,6 +84,8 @@ import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.protobuf.ByteString;
+import org.apache.tez.runtime.library.common.sort.impl.FileBackedBoundedByteArrayOutputStream;
+import static org.junit.Assert.assertEquals;
 
 import static org.apache.tez.runtime.library.common.sort.impl.TezSpillRecord.SPILL_FILE_PERMS;
 
@@ -721,9 +724,12 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
       if (!pipelinedShuffle) {
         if (skipBuffers) {
           writer.close();
-          if (writer.hasSpilled()) {
-            long rawLen = writer.getRawLength();
-            long compLen = writer.getCompressedLength();
+          long rawLen = writer.getRawLength();
+          long compLen = writer.getCompressedLength();
+
+          /*??? RZ: Tez-475 */
+          if ((writer).hasSpilled())
+          {
             TezIndexRecord rec = new TezIndexRecord(0, rawLen, compLen);
             TezSpillRecord sr = new TezSpillRecord(1);
             sr.putIndex(rec, 0);
@@ -869,6 +875,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
     return CompositeDataMovementEvent.create(0, numPartitions, payload);
   }
 
+  /* To enable the date event: Tez-4075 */
   private Event generateDMEvent2(boolean addSpillDetails, int spillId,
                                 boolean isLastSpill,  byte[] data)
           throws IOException {
@@ -877,15 +884,21 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
     DataMovementEventPayloadProto.Builder payloadBuilder = DataMovementEventPayloadProto
             .newBuilder();
 
-    //assert(isLastSpill, true); //???
+
+    //assertTrue(isLastSpill);
 
     if (addSpillDetails) {
       payloadBuilder.setSpillId(spillId);
       payloadBuilder.setLastEvent(isLastSpill);
     }
-    //cannot send compressed data
-    //payloadBuilder.setData(data, datasize );
-    payloadBuilder.setData(payloadBuilder.getData());//??
+    /*cannot send compressed data  */
+    payloadBuilder.setData(data, data.length);
+    //payloadBuilder.setData()
+    //payloadBuilder.setData(payloadBuilder.getData()); //???
+
+    ShuffleUserPayloads.DataProto.Builder dataProtoBuilder = ShuffleUserPayloads.DataProto.newBuilder();
+
+
     ByteBuffer payload = payloadBuilder.build().toByteString().asReadOnlyByteBuffer();
     return CompositeDataMovementEvent.create(0, numPartitions, payload);
   }

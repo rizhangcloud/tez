@@ -58,7 +58,7 @@ import org.apache.tez.runtime.library.common.sort.impl.IFileOutputStream;
 @InterfaceAudience.Private
 @InterfaceStability.Unstable
 
-class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
+public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
     private static final Logger LOG = LoggerFactory.getLogger(FileBackedBoundedByteArrayOutputStream.class);
     static final byte[] HEADER = new byte[] { (byte) 'T', (byte) 'I',
             (byte) 'F' , (byte) 0};
@@ -112,36 +112,38 @@ class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
         if (bufferIsFull) {
             out.write(b, off, len);
         }
-        try {
-            memStream.write(b, off, len);
-        } catch(EOFException e) {
-            /* The data in the buffer is over the limit, so creates a file based stream */
-            outputStream = fs.create(file);
-            this.rawOut = outputStream;
-            this.checksumOut = new IFileOutputStream(outputStream);
+        else {
+            try {
+                memStream.write(b, off, len);
+            } catch (EOFException e) {
+                /* The data in the buffer is over the limit, so creates a file based stream */
+                outputStream = fs.create(file);
+                this.rawOut = outputStream;
+                this.checksumOut = new IFileOutputStream(outputStream);
 
-            this.start = this.rawOut.getPos(); //??? how to return to the IFile.writer caller?
+                this.start = this.rawOut.getPos(); //??? how to return to the IFile.writer caller?
 
-            if (this.codec != null) {
-                this.compressor = CodecPool.getCompressor(codec);
-                if (this.compressor != null) {
-                    this.compressor.reset();
-                    this.compressedOut = codec.createOutputStream(this.checksumOut, this.compressor);
-                    this.out = new FSDataOutputStream(this.compressedOut,  null);
-                    this.compressOutput = true;
+                if (this.codec != null) {
+                    this.compressor = CodecPool.getCompressor(codec);
+                    if (this.compressor != null) {
+                        this.compressor.reset();
+                        this.compressedOut = codec.createOutputStream(this.checksumOut, this.compressor);
+                        this.out = new FSDataOutputStream(this.compressedOut, null);
+                        this.compressOutput = true;
+                    } else {
+                        LOG.warn("Could not obtain compressor from CodecPool");
+                        this.out = new FSDataOutputStream(checksumOut, null);
+                    }
                 } else {
-                    LOG.warn("Could not obtain compressor from CodecPool");
-                    this.out = new FSDataOutputStream(checksumOut,null);
+                    this.out = new FSDataOutputStream(checksumOut, null);
                 }
-            } else {
-                this.out = new FSDataOutputStream(checksumOut,null);
-            }
-            writeHeader(this.out);
-            /* end of creating file based stream */
+                writeHeader(this.out);
+                /* end of creating file based stream */
 
-            bufferIsFull = true;
-            out.write(b, off, len);
+                bufferIsFull = true;
+                out.write(b, off, len);
             }
+        }
     }
 
     protected void writeHeader(OutputStream outputStream) throws IOException {
