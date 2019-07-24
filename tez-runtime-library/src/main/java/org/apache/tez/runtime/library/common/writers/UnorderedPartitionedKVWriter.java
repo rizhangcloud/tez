@@ -925,7 +925,11 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
     return CompositeDataMovementEvent.create(0, numPartitions, payload);
   }
 
-  /* To enable the date event: Tez-4075 */
+
+  /* To enable the date event: Tez-4075
+  * cannot send compressed data?
+  * */
+  /*
   private Event generateDMEvent2(boolean addSpillDetails, int spillId,
                                 boolean isLastSpill,  byte[] data)
           throws IOException {
@@ -941,7 +945,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
       payloadBuilder.setSpillId(spillId);
       payloadBuilder.setLastEvent(isLastSpill);
     }
-    /*cannot send compressed data  */
+
     payloadBuilder.setData(data, data.length);
     //payloadBuilder.setData()
     //payloadBuilder.setData(payloadBuilder.getData()); //???
@@ -967,6 +971,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
     ByteBuffer payload = payloadBuilder.build().toByteString().asReadOnlyByteBuffer();
     return CompositeDataMovementEvent.create(0, numPartitions, payload);
   }
+   */
 
   private void cleanupCurrentBuffer() {
     currentBuffer.cleanup();
