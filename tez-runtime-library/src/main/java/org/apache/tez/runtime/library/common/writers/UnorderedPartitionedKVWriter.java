@@ -946,7 +946,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
     //payloadBuilder.setData()
     //payloadBuilder.setData(payloadBuilder.getData()); //???
 
-    
+
     if (dataViaEventsEnabled && (returnEvents.size()>0) && this.kvWriter.getCompressedLength()
             <= dataViaEventsMaxSize) {
       LOG.info("Serialzing actual data into DataMovementEvent, dataSize: " + this.kvWriter.getCompressedLength());

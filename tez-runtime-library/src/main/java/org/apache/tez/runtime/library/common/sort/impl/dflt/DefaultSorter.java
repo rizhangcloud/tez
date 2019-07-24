@@ -895,9 +895,7 @@ public final class DefaultSorter extends ExternalSorter implements IndexedSortab
       final Path filename =
           mapOutputFile.getSpillFileForWrite(numSpills, size);
       spillFilePaths.put(numSpills, filename);
-
       out = rfs.create(filename);
-
       if (!SPILL_FILE_PERMS.equals(SPILL_FILE_PERMS.applyUMask(FsPermission.getUMask(conf)))) {
         rfs.setPermission(filename, SPILL_FILE_PERMS);
       }
@@ -911,14 +909,8 @@ public final class DefaultSorter extends ExternalSorter implements IndexedSortab
           long segmentStart = out.getPos();
           if (spindex < mend && kvmeta.get(offsetFor(spindex) + PARTITION) == i
               || !sendEmptyPartitionDetails) {
-
             writer = new Writer(conf, out, keyClass, valClass, codec,
                 spilledRecordsCounter, null, rle);
-
-            /*
-            writer = new Writer(conf, rfs, filename, keyClass, valClass, codec,
-                    spilledRecordsCounter, null, rle);
-             */
           }
           if (combiner == null) {
             // spill directly
@@ -1014,9 +1006,7 @@ public final class DefaultSorter extends ExternalSorter implements IndexedSortab
       final Path filename =
           mapOutputFile.getSpillFileForWrite(numSpills, size);
       spillFilePaths.put(numSpills, filename);
-
       out = rfs.create(filename);
-
       if (!SPILL_FILE_PERMS.equals(SPILL_FILE_PERMS.applyUMask(FsPermission.getUMask(conf)))) {
         rfs.setPermission(filename, SPILL_FILE_PERMS);
       }
@@ -1028,13 +1018,8 @@ public final class DefaultSorter extends ExternalSorter implements IndexedSortab
           long segmentStart = out.getPos();
           // Create a new codec, don't care!
           if (!sendEmptyPartitionDetails || (i == partition)) {
-
             writer = new Writer(conf, out, keyClass, valClass, codec,
                 spilledRecordsCounter, null, false);
-            /*
-            writer = new Writer(conf, rfs, filename, keyClass, valClass, codec,
-                    spilledRecordsCounter, null, false);
-             */
           }
           if (i == partition) {
             final long recordStart = out.getPos();
@@ -1298,7 +1283,6 @@ public final class DefaultSorter extends ExternalSorter implements IndexedSortab
 
     //The output stream for the final single output file
     FSDataOutputStream finalOut = rfs.create(finalOutputFile, true, 4096);
-
     if (!SPILL_FILE_PERMS.equals(SPILL_FILE_PERMS.applyUMask(FsPermission.getUMask(conf)))) {
       rfs.setPermission(finalOutputFile, SPILL_FILE_PERMS);
     }
@@ -1313,16 +1297,8 @@ public final class DefaultSorter extends ExternalSorter implements IndexedSortab
         for (int i = 0; i < partitions; i++) {
           long segmentStart = finalOut.getPos();
           if (!sendEmptyPartitionDetails) {
-            /* ??? use new writer */
-            /*
             Writer writer =
                 new Writer(conf, finalOut, keyClass, valClass, codec, null, null);
-             */
-
-            Writer writer =
-                    new Writer(conf,rfs, finalOutputFile, keyClass, valClass, codec, null, null);
-
-
             writer.close();
             rawLength = writer.getRawLength();
             partLength = writer.getCompressedLength();
@@ -1396,7 +1372,6 @@ public final class DefaultSorter extends ExternalSorter implements IndexedSortab
         Writer writer =
             new Writer(conf, finalOut, keyClass, valClass, codec,
                 spilledRecordsCounter, null);
-
         if (combiner == null || numSpills < minSpillsForCombine) {
           TezMerger.writeFile(kvIter, writer,
               progressable, TezRuntimeConfiguration.TEZ_RUNTIME_RECORDS_BEFORE_PROGRESS_DEFAULT);

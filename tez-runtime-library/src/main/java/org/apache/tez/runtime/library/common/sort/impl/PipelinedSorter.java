@@ -501,15 +501,10 @@ public class PipelinedSorter extends ExternalSorter {
         }
         Writer writer = null;
         try {
-          /*??? how to get the segmentStart in the new streaming model */
           long segmentStart = out.getPos();
           if (!sendEmptyPartitionDetails || (i == partition)) {
-            /*
             writer = new Writer(conf, out, keyClass, valClass, codec,
                 spilledRecordsCounter, null, false);
-             */
-            writer = new Writer(conf, rfs, filename, keyClass, valClass, codec,
-                    spilledRecordsCounter, null, false);
           }
           // we need not check for combiner since its a single record
           if (i == partition) {
@@ -580,18 +575,11 @@ public class PipelinedSorter extends ExternalSorter {
       final Path filename =
         mapOutputFile.getSpillFileForWrite(numSpills, size);
       spillFilePaths.put(numSpills, filename);
-
-      /* change to use the new Writer */
-      /*
       out = rfs.create(filename, true, 4096);
-      */
-      /*??? how to transmit this */
       if (!SPILL_FILE_PERMS.equals(SPILL_FILE_PERMS.applyUMask(FsPermission.getUMask(conf)))) {
         rfs.setPermission(filename, SPILL_FILE_PERMS);
       }
       LOG.info(outputContext.getDestinationVertexName() + ": Spilling to " + filename.toString());
-
-
       for (int i = 0; i < partitions; ++i) {
         if (isThreadInterrupted()) {
           return false;
@@ -603,12 +591,8 @@ public class PipelinedSorter extends ExternalSorter {
         Writer writer = null;
         boolean hasNext = kvIter.hasNext();
         if (hasNext || !sendEmptyPartitionDetails) {
-          /*
           writer = new Writer(conf, out, keyClass, valClass, codec,
               spilledRecordsCounter, null, merger.needsRLE());
-           */
-          writer = new Writer(conf, rfs, filename, keyClass, valClass, codec,
-                  spilledRecordsCounter, null, merger.needsRLE());
         }
         if (combiner == null) {
           while (kvIter.next()) {
@@ -776,14 +760,10 @@ public class PipelinedSorter extends ExternalSorter {
                 + finalIndexFile);
       }
       //The output stream for the final single output file
-      /*??? the old Writer */
-
       FSDataOutputStream finalOut = rfs.create(finalOutputFile, true, 4096);
-
       if (!SPILL_FILE_PERMS.equals(SPILL_FILE_PERMS.applyUMask(FsPermission.getUMask(conf)))) {
         rfs.setPermission(finalOutputFile, SPILL_FILE_PERMS);
       }
-
 
       final TezSpillRecord spillRec = new TezSpillRecord(partitions);
 
@@ -824,18 +804,9 @@ public class PipelinedSorter extends ExternalSorter {
         long rawLength = 0;
         long partLength = 0;
         if (shouldWrite) {
-          /*??? old Writer stream */
-          /*
           Writer writer =
               new Writer(conf, finalOut, keyClass, valClass, codec,
                   spilledRecordsCounter, null, merger.needsRLE());
-          */
-
-          Writer writer =
-                  new Writer(conf, rfs, finalOutputFile, keyClass, valClass, codec,
-                          spilledRecordsCounter, null, merger.needsRLE());
-
-
           if (combiner == null || numSpills < minSpillsForCombine) {
             TezMerger.writeFile(kvIter, writer, progressable,
                 TezRuntimeConfiguration.TEZ_RUNTIME_RECORDS_BEFORE_PROGRESS_DEFAULT);
@@ -863,12 +834,7 @@ public class PipelinedSorter extends ExternalSorter {
       fileOutputByteCounter.increment(rfs.getFileStatus(finalOutputFile).getLen());
 
       spillRec.writeToFile(finalIndexFile, conf);
-
-
-      /*?? because use the new stream */
       finalOut.close();
-
-
       for (int i = 0; i < numSpills; i++) {
         Path indexFilename = spillFileIndexPaths.get(i);
         Path spillFilename = spillFilePaths.get(i);
