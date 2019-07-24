@@ -159,7 +159,10 @@ public class UnorderedKVOutput extends AbstractLogicalOutput {
       //        + ", CompressedLength: " + this.kvWriter.getCompressedLength());
 
       /*
-      if (dataViaEventsEnabled && (returnEvents.size()>0) && this.kvWriter.getCompressedLength() <= dataViaEventsMaxSize) {
+       ??? below is used for Tez-2196
+       */
+      if (dataViaEventsEnabled && (returnEvents.size()>0) && this.kvWriter.getCompressedLength()
+              <= dataViaEventsMaxSize) {
         LOG.info("Serialzing actual data into DataMovementEvent, dataSize: " + this.kvWriter.getCompressedLength());
         byte[] data = this.kvWriter.getData();
 
@@ -170,7 +173,6 @@ public class UnorderedKVOutput extends AbstractLogicalOutput {
         dataProtoBuilder.setCompressedLength((int) this.kvWriter.getCompressedLength());
         payloadBuilder.setData(dataProtoBuilder.build());
       }
-       */
 
       // Set the list of empty partitions - single partition on this case.
       if (returnEvents.size()==0) {

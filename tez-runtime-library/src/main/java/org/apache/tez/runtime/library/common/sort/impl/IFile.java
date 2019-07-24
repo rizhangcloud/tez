@@ -115,7 +115,7 @@ public class IFile {
     @VisibleForTesting
     boolean sameKey = false;
 
-    boolean isSpilled=false;
+    boolean hasOverflowed=false;
 
     final int RLE_MARKER_SIZE = WritableUtils.getVIntSize(RLE_MARKER);
     final int V_END_MARKER_SIZE = WritableUtils.getVIntSize(V_END_MARKER);
@@ -225,7 +225,7 @@ public class IFile {
 
       //this.out=new FileBackedBoundedByteArrayOutputStream(this.compressedOut, null, file, codec, rle);
       this.out=new FileBackedBoundedByteArrayOutputStream(null, null, rfs, file, codec, rle);
-      this.isSpilled = ((FileBackedBoundedByteArrayOutputStream)this.out).hasSpilled();
+      this.hasOverflowed = ((FileBackedBoundedByteArrayOutputStream)this.out).hasOverflowed();
 
       //writeHeader(outputStream); // ??? moved inside the new stream
 
@@ -246,6 +246,13 @@ public class IFile {
       this(conf, fs, file, null, null, null, null, null);
     }
 
+
+    public Writer(CompressionCodec codec, boolean rle) {
+      this.compressor = CodecPool.getCompressor(codec);
+      this.rle = rle;
+    }
+
+
     protected void writeHeader(OutputStream outputStream) throws IOException {
       if (!headerWritten) {
         outputStream.write(HEADER, 0, HEADER.length - 1);
@@ -255,9 +262,12 @@ public class IFile {
     }
 
 
+
     public boolean hasSpilled() {
-      return this.isSpilled;
+      return this.hasOverflowed;
     }
+
+
     public void close() throws IOException {
       if (closed.getAndSet(true)) {
         throw new IOException("Writer was already closed earlier");

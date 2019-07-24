@@ -154,7 +154,7 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
         }
     }
 
-    public boolean hasSpilled() {
+    public boolean hasOverflowed() {
             return bufferIsFull;
         }
 

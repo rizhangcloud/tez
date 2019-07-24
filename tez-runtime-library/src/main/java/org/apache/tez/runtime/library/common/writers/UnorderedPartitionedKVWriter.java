@@ -87,6 +87,8 @@ import com.google.protobuf.ByteString;
 import org.apache.tez.runtime.library.common.sort.impl.FileBackedBoundedByteArrayOutputStream;
 import static org.junit.Assert.assertEquals;
 
+import org.apache.tez.runtime.library.common.sort.impl.BoundedByteArrayWriter;
+
 import static org.apache.tez.runtime.library.common.sort.impl.TezSpillRecord.SPILL_FILE_PERMS;
 
 public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWriter {
@@ -195,6 +197,8 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
 
   private List<WrappedBuffer> filledBuffers = new ArrayList<>();
 
+  private boolean closed = false;
+
   public UnorderedPartitionedKVWriter(OutputContext outputContext, Configuration conf,
       int numOutputs, long availableMemoryBytes) throws IOException {
     super(outputContext, conf, numOutputs);
@@ -283,8 +287,16 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
       finalIndexPath = outputFileHandler.getOutputIndexFileForWrite(indexFileSizeEstimate);
       skipBuffers = true;
 
+      /*??? the entrance */
+      /*
       writer = new IFile.Writer(conf, rfs, finalOutPath, keyClass, valClass,
             codec, outputRecordsCounter, outputRecordBytesCounter);
+       */
+      writer = new BoundedByteArrayWriter(conf, rfs, finalOutPath, keyClass, valClass,
+              codec, outputRecordsCounter, outputRecordBytesCounter, false);
+
+
+
       if (!SPILL_FILE_PERMS.equals(SPILL_FILE_PERMS.applyUMask(FsPermission.getUMask(conf)))) {
         rfs.setPermission(finalOutPath, SPILL_FILE_PERMS);
       }
@@ -691,6 +703,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
 
   @Override
   public List<Event> close() throws IOException, InterruptedException {
+    this.closed = true;
     // In case there are buffers to be spilled, schedule spilling
     scheduleSpill(true);
     List<Event> eventList = Lists.newLinkedList();
@@ -752,12 +765,14 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
             fileOutputBytesCounter.increment(compLen + indexFileSizeEstimate);
           }
           eventList.add(generateVMEvent());
-          // generateDMEvent2 or generateDMEvent
+
           if (writer.hasSpilled()) {
             eventList.add(generateDMEvent(false, -1, false, outputContext
                     .getUniqueIdentifier(), emptyPartitions));
           } else {
-            eventList.add(generateDMEvent2(false, -1, false, writer.getDataBuffer()));
+            eventList.add(generateDMEvent2(false, -1, false,
+                    writer.getOutputStream()
+                    writer.getDataBuffer()));
           }
           return eventList;
         }
@@ -816,6 +831,41 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
       return events;
     }
   }
+
+  /* originally implemented in FileBasedKVWriter */
+  /* start */
+  /*
+  public long getRawLength() {
+    Preconditions.checkState(closed, "Only available after the Writer has been closed");
+    return this.writer.getRawLength();
+  }
+
+
+  public long getCompressedLength() {
+    Preconditions.checkState(closed, "Only available after the Writer has been closed");
+    return this.writer.getCompressedLength();
+  }
+
+  public byte[] getData() throws IOException {
+    Preconditions.checkState(closed,
+            "Only available after the Writer has been closed");
+    FSDataInputStream inStream = null;
+    byte[] buf = null;
+    try {
+      inStream = rfs.open(outputPath);
+      buf = new byte[(int) getCompressedLength()];
+      IOUtils.readFully(inStream, buf, 0, (int) getCompressedLength());
+    } finally {
+      if (inStream != null) {
+        inStream.close();
+      }
+    }
+    return buf;
+  }
+   */
+  /* end */
+
+
 
   private BitSet getEmptyPartitions(int[] recordsPerPartition) {
     Preconditions.checkArgument(recordsPerPartition != null, "records per partition can not be null");
@@ -895,6 +945,21 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
     payloadBuilder.setData(data, data.length);
     //payloadBuilder.setData()
     //payloadBuilder.setData(payloadBuilder.getData()); //???
+
+    
+    if (dataViaEventsEnabled && (returnEvents.size()>0) && this.kvWriter.getCompressedLength()
+            <= dataViaEventsMaxSize) {
+      LOG.info("Serialzing actual data into DataMovementEvent, dataSize: " + this.kvWriter.getCompressedLength());
+      byte[] data = this.kvWriter.getData();
+
+      ShuffleUserPayloads.DataProto.Builder dataProtoBuilder = ShuffleUserPayloads.DataProto.newBuilder();
+
+      dataProtoBuilder.setData(ByteString.copyFrom(data));
+      dataProtoBuilder.setRawLength((int) this.kvWriter.getRawLength());
+      dataProtoBuilder.setCompressedLength((int) this.kvWriter.getCompressedLength());
+      payloadBuilder.setData(dataProtoBuilder.build());
+    }
+
 
     ShuffleUserPayloads.DataProto.Builder dataProtoBuilder = ShuffleUserPayloads.DataProto.newBuilder();
 
