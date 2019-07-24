@@ -197,7 +197,6 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
 
   private List<WrappedBuffer> filledBuffers = new ArrayList<>();
 
-  private boolean closed = false;
 
   public UnorderedPartitionedKVWriter(OutputContext outputContext, Configuration conf,
       int numOutputs, long availableMemoryBytes) throws IOException {
@@ -703,7 +702,6 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
 
   @Override
   public List<Event> close() throws IOException, InterruptedException {
-    this.closed = true;
     // In case there are buffers to be spilled, schedule spilling
     scheduleSpill(true);
     List<Event> eventList = Lists.newLinkedList();
@@ -741,13 +739,13 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
           long compLen = writer.getCompressedLength();
 
           /*??? RZ: Tez-475 */
-          if ((writer).hasSpilled())
-          {
+          //if ((writer).hasSpilled())
+          //{
             TezIndexRecord rec = new TezIndexRecord(0, rawLen, compLen);
             TezSpillRecord sr = new TezSpillRecord(1);
             sr.putIndex(rec, 0);
             sr.writeToFile(finalIndexPath, conf);
-          }
+          //}
 
           BitSet emptyPartitions = new BitSet();
           if (outputRecordsCounter.getValue() == 0) {
@@ -765,7 +763,11 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
             fileOutputBytesCounter.increment(compLen + indexFileSizeEstimate);
           }
           eventList.add(generateVMEvent());
+          eventList.add(generateDMEvent(false, -1, false, outputContext
+                  .getUniqueIdentifier(), emptyPartitions));
 
+          /* ??? enable dataEvent */
+          /*
           if (writer.hasSpilled()) {
             eventList.add(generateDMEvent(false, -1, false, outputContext
                     .getUniqueIdentifier(), emptyPartitions));
@@ -774,6 +776,8 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
                     writer.getOutputStream()
                     writer.getDataBuffer()));
           }
+           */
+
           return eventList;
         }
 

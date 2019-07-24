@@ -198,7 +198,25 @@ public class UnorderedKVOutput extends AbstractLogicalOutput {
 
       DataMovementEventPayloadProto payloadProto = payloadBuilder.build();
 
+
+
+
+
       DataMovementEvent dmEvent = DataMovementEvent.create(0, payloadProto.toByteString().asReadOnlyByteBuffer());
+
+      /*
+                if (writer.hasSpilled()) {
+            eventList.add(generateDMEvent(false, -1, false, outputContext
+                    .getUniqueIdentifier(), emptyPartitions));
+          } else {
+            eventList.add(generateDMEvent2(false, -1, false,
+                    writer.getOutputStream()
+                    writer.getDataBuffer()));
+          }
+
+       */
+
+
       /*List<Event> events = Lists.newArrayListWithCapacity(1);
       events.add(dmEvent);
       returnEvents.add(dmlEvent);
