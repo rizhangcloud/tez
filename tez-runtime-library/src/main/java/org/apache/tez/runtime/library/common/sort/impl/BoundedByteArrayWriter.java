@@ -61,7 +61,14 @@ public class BoundedByteArrayWriter extends Writer {
 
 
     public long getRawLength() {
-        return decompressedBytesWritten;
+        if(this.outputStream.out instanceof FileBackedBoundedByteArrayOutputStream)
+        {
+            return outputStream.memStream.size();
+        }
+        else
+        {
+            return decompressedBytesWritten;
+        }
     }
 
     public long getCompressedLength() {
@@ -69,17 +76,13 @@ public class BoundedByteArrayWriter extends Writer {
     }
 
     public void close() throws IOException {
-
-        // write V_END_MARKER as needed
-        writeValueMarker(out);
-
-        // Write EOF_MARKER for key/value length
-        WritableUtils.writeVInt(out, IFile.EOF_MARKER);
-        WritableUtils.writeVInt(out, IFile.EOF_MARKER);
-
-        // Close the stream
-        out.close();
-        out = null;
+        if (this.hasOverflowed == true)
+            super.close();
+        else {
+            // Close the stream
+            out.close();
+            out = null;
+        }
     }
 
 }

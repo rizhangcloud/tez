@@ -219,7 +219,7 @@ public class IFile {
       this.writtenRecordsCounter = writesCounter;
       this.serializedUncompressedBytes = serializedBytesCounter;
 
-      //this.start = this.rawOut.getPos(); //??? how to get this value?
+      //this.start = this.rawOut.getPos(); //???
       this.start=0;
       this.rle = rle;
 

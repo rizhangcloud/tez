@@ -117,6 +117,7 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
                 memStream.write(b, off, len);
             } catch (EOFException e) {
                 /* The data in the buffer is over the limit, so creates a file based stream */
+                /*??? */
                 outputStream = fs.create(file);
                 this.rawOut = outputStream;
                 this.checksumOut = new IFileOutputStream(outputStream);
@@ -137,6 +138,7 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
                 } else {
                     this.out = new FSDataOutputStream(checksumOut, null);
                 }
+
                 writeHeader(this.out);
                 /* end of creating file based stream */
 

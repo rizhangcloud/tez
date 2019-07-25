@@ -85,11 +85,13 @@ import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.protobuf.ByteString;
 import org.apache.tez.runtime.library.common.sort.impl.FileBackedBoundedByteArrayOutputStream;
-import static org.junit.Assert.assertEquals;
 
 import org.apache.tez.runtime.library.common.sort.impl.BoundedByteArrayWriter;
 
 import static org.apache.tez.runtime.library.common.sort.impl.TezSpillRecord.SPILL_FILE_PERMS;
+
+import org.apache.hadoop.io.IOUtils;
+
 
 public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWriter {
 
@@ -133,6 +135,8 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
   // uncompressed size for each partition
   private final long[] sizePerPartition;
   private volatile long spilledSize = 0;
+
+  private boolean closed = false;
 
   static final ThreadLocal<Deflater> deflater = new ThreadLocal<Deflater>() {
 
@@ -277,7 +281,6 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
         TaskCounter.OUTPUT_LARGE_RECORDS);
 
 
-
     indexFileSizeEstimate = numPartitions * Constants.MAP_OUTPUT_INDEX_RECORD_LENGTH;
 
     if (numPartitions == 1 && !pipelinedShuffle) {
@@ -293,7 +296,6 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
        */
       writer = new BoundedByteArrayWriter(conf, rfs, finalOutPath, keyClass, valClass,
               codec, outputRecordsCounter, outputRecordBytesCounter, false);
-
 
 
       if (!SPILL_FILE_PERMS.equals(SPILL_FILE_PERMS.applyUMask(FsPermission.getUMask(conf)))) {
@@ -703,6 +705,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
   @Override
   public List<Event> close() throws IOException, InterruptedException {
     // In case there are buffers to be spilled, schedule spilling
+    closed = true;
     scheduleSpill(true);
     List<Event> eventList = Lists.newLinkedList();
     isShutdown.set(true);
@@ -838,7 +841,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
 
   /* originally implemented in FileBasedKVWriter */
   /* start */
-  /*
+
   public long getRawLength() {
     Preconditions.checkState(closed, "Only available after the Writer has been closed");
     return this.writer.getRawLength();
@@ -853,20 +856,31 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
   public byte[] getData() throws IOException {
     Preconditions.checkState(closed,
             "Only available after the Writer has been closed");
-    FSDataInputStream inStream = null;
-    byte[] buf = null;
-    try {
-      inStream = rfs.open(outputPath);
-      buf = new byte[(int) getCompressedLength()];
-      IOUtils.readFully(inStream, buf, 0, (int) getCompressedLength());
-    } finally {
-      if (inStream != null) {
-        inStream.close();
-      }
+
+    if(this.writer instanceof BoundedByteArrayWriter)
+    {
+      return ((BoundedByteArrayWriter)this.writer).getData();
+
     }
-    return buf;
+    else {
+
+      FSDataInputStream inStream = null;
+
+      byte[] buf = null;
+      try {
+
+        inStream = rfs.open(finalOutPath); /* ??? finalOutPath */
+        buf = new byte[(int) getCompressedLength()];
+        IOUtils.readFully(inStream, buf, 0, (int) getCompressedLength());
+      } finally {
+        if (inStream != null) {
+          inStream.close();
+        }
+      }
+      return buf;
+    }
   }
-   */
+
   /* end */
 
 
