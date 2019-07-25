@@ -75,12 +75,14 @@ public class UnorderedKVOutput extends AbstractLogicalOutput {
   UnorderedPartitionedKVWriter kvWriter;
   
   private Configuration conf;
+
+  private boolean dataViaEventsEnabled;
+
+  private int dataViaEventsMaxSize;
   
   private MemoryUpdateCallbackHandler memoryUpdateCallbackHandler;
   private final AtomicBoolean isStarted = new AtomicBoolean(false);
 
-  private boolean dataViaEventsEnabled;
-  private int dataViaEventsMaxSize;
 
   public UnorderedKVOutput(OutputContext outputContext, int numPhysicalOutputs) {
     super(outputContext, numPhysicalOutputs);
@@ -88,6 +90,7 @@ public class UnorderedKVOutput extends AbstractLogicalOutput {
 
 
   @Override
+  //public synchronized List<Event> dataViaEventsEnabled()
   public synchronized List<Event> initialize()
       throws Exception {
     this.conf = TezUtils.createConfFromUserPayload(getContext().getUserPayload());

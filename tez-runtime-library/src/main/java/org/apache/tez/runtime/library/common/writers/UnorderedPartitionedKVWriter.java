@@ -289,7 +289,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
       finalIndexPath = outputFileHandler.getOutputIndexFileForWrite(indexFileSizeEstimate);
       skipBuffers = true;
 
-      /*??? the entrance */
+      /*??? the entrance to the dataViaEvent feature*/
       /*
       writer = new IFile.Writer(conf, rfs, finalOutPath, keyClass, valClass,
             codec, outputRecordsCounter, outputRecordBytesCounter);
@@ -840,17 +840,33 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
   }
 
   /* originally implemented in FileBasedKVWriter */
-  /* start */
+  /* start ???*/
 
   public long getRawLength() {
     Preconditions.checkState(closed, "Only available after the Writer has been closed");
-    return this.writer.getRawLength();
+
+    if(this.writer instanceof BoundedByteArrayWriter)
+    {
+      return ((BoundedByteArrayWriter)this.writer).getRawLength();
+
+    }
+    else {
+      return this.writer.getRawLength();
+    }
   }
 
 
   public long getCompressedLength() {
     Preconditions.checkState(closed, "Only available after the Writer has been closed");
-    return this.writer.getCompressedLength();
+
+      if(this.writer instanceof BoundedByteArrayWriter)
+      {
+        return ((BoundedByteArrayWriter)this.writer).getCompressedLength();
+
+      }
+      else {
+        return this.writer.getCompressedLength();
+      }
   }
 
   public byte[] getData() throws IOException {
@@ -863,7 +879,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
 
     }
     else {
-
+      /*??? get the data from the old stream */
       FSDataInputStream inStream = null;
 
       byte[] buf = null;

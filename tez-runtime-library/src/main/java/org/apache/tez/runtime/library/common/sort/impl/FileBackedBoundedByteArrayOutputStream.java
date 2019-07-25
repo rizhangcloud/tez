@@ -59,6 +59,7 @@ import org.apache.tez.runtime.library.common.sort.impl.IFileOutputStream;
 @InterfaceStability.Unstable
 
 public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
+    //public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
     private static final Logger LOG = LoggerFactory.getLogger(FileBackedBoundedByteArrayOutputStream.class);
     static final byte[] HEADER = new byte[] { (byte) 'T', (byte) 'I',
             (byte) 'F' , (byte) 0};
@@ -102,7 +103,9 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
         this.rle = rle;
     }
 
-
+    public void write(int off) throws IOException {
+        write(ByteBuffer.allocate(4).putInt(off).array(), (int)this.rawOut.getPos(), 4);
+    }
 
     @Override
     public void write(byte[] b, int off, int len) throws IOException {

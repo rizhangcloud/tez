@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import org.apache.tez.common.io.NonSyncDataOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -81,7 +82,9 @@ public class IFile {
   @SuppressWarnings({"unchecked", "rawtypes"})
   public static class Writer {
     //protected FileBackedBoundedByteArrayOutputStream out;
-    protected FSDataOutputStream out;
+    //protected FSDataOutputStream out;
+    //protected NonSyncDataOutputStream out;
+    protected DataOutputStream out;
 
     boolean ownOutputStream = false;
     long start = 0;
@@ -242,14 +245,22 @@ public class IFile {
       }
     }
 
-    public Writer(Configuration conf, FileSystem fs, Path file) throws IOException {
-      this(conf, fs, file, null, null, null, null, null);
+    public Writer(Configuration conf, FileSystem fs, Path file, TezCounter writesCounter, TezCounter serializedUncompressedBytes) throws IOException {
+      this(conf, fs, file, null, null, null, writesCounter, serializedUncompressedBytes);
+
     }
 
 
-    public Writer(CompressionCodec codec, boolean rle) {
+    public Writer(CompressionCodec codec, boolean rle, TezCounter writesCounter, TezCounter serializedUncompressedBytes) {
       this.compressor = CodecPool.getCompressor(codec);
       this.rle = rle;
+      this.writtenRecordsCounter = writesCounter;
+      this.serializedUncompressedBytes=serializedUncompressedBytes;
+    }
+
+    protected void Writer(OutputStream outputStream) throws IOException {
+
+
     }
 
 
