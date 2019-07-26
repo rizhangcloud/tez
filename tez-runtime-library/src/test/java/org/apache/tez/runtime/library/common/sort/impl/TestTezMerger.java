@@ -136,14 +136,11 @@ public class TestTezMerger {
   private Path createIFileWithTextData(List<String> data) throws IOException {
     Path path = new Path(workDir + "/src", "data_" + System.nanoTime() + ".out");
     /* ??? use new writer */
-    /*
     FSDataOutputStream out = localFs.create(path);
     IFile.Writer writer = new IFile.Writer(defaultConf, out, Text.class,
         Text.class, null, null, null, true);
-     */
 
-    IFile.Writer writer = new IFile.Writer(defaultConf, localFs, path, Text.class,
-            Text.class, null, null, null, true);
+
     for (String key : data) {
       writer.append(new Text(key), new Text(key + "_" + System.nanoTime()));
     }
@@ -782,18 +779,11 @@ public class TestTezMerger {
     LOG.info("DataSet size : " + dataSet.size());
     Path path = new Path(workDir + "/src", "data_" + System.nanoTime() + ".out");
 
-    /* ??? use new stream */
-    /*
+
     FSDataOutputStream out = localFs.create(path);
     //create IFile with RLE
     IFile.Writer writer = new IFile.Writer(defaultConf, out, IntWritable.class
         , LongWritable.class, null, null, null, true);
-     */
-
-    //create IFile with RLE
-    IFile.Writer writer = new IFile.Writer(defaultConf, localFs,path, IntWritable.class
-            , LongWritable.class, null, null, null, true);
-
 
     for (Integer key : dataSet.keySet()) {
       for (Long value : dataSet.get(key)) {

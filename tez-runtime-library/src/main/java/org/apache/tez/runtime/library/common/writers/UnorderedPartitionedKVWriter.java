@@ -86,8 +86,6 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.protobuf.ByteString;
 import org.apache.tez.runtime.library.common.sort.impl.FileBackedBoundedByteArrayOutputStream;
 
-import org.apache.tez.runtime.library.common.sort.impl.BoundedByteArrayWriter;
-
 import static org.apache.tez.runtime.library.common.sort.impl.TezSpillRecord.SPILL_FILE_PERMS;
 
 import org.apache.hadoop.io.IOUtils;
@@ -850,29 +848,14 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
 
   public long getRawLength() {
     Preconditions.checkState(closed, "Only available after the Writer has been closed");
-
-    if(this.writer instanceof BoundedByteArrayWriter)
-    {
-      return ((BoundedByteArrayWriter)this.writer).getRawLength();
-
-    }
-    else {
       return this.writer.getRawLength();
-    }
+
   }
 
 
   public long getCompressedLength() {
     Preconditions.checkState(closed, "Only available after the Writer has been closed");
-
-      if(this.writer instanceof BoundedByteArrayWriter)
-      {
-        return ((BoundedByteArrayWriter)this.writer).getCompressedLength();
-
-      }
-      else {
-        return this.writer.getCompressedLength();
-      }
+      return this.writer.getCompressedLength();
   }
 
   public byte[] getData() throws IOException {

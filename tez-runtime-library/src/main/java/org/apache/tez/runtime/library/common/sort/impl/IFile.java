@@ -125,7 +125,7 @@ public class IFile {
 
 
     /* Note: the original first Writer constructor which creates file */
-    /*
+
     public Writer(Configuration conf, FileSystem fs, Path file,
                   Class keyClass, Class valueClass,
                   CompressionCodec codec,
@@ -135,7 +135,7 @@ public class IFile {
               writesCounter, serializedBytesCounter);
       ownOutputStream = true;
     }
-     */
+
 
     /* Note: the new first Writer constructor which does not create file. */
     /*
@@ -209,7 +209,7 @@ public class IFile {
     }
 
 
-    /* The new forth constructor, which receives fs, and file, but does not create file. It uses the new
+    /* The fifth constructor, which receives fs, and file, but does not create file. It uses the new
        stream.
      */
     public Writer(Configuration conf, FileSystem rfs, Path file,
@@ -242,25 +242,6 @@ public class IFile {
       } else {
         this.closeSerializers = false;
       }
-    }
-    /*
-    public Writer(Configuration conf, FileSystem fs, Path file, TezCounter writesCounter, TezCounter serializedUncompressedBytes) throws IOException {
-      this(conf, fs, file, null, null, null, writesCounter, serializedUncompressedBytes);
-
-    }
-     */
-
-
-    public Writer(CompressionCodec codec, boolean rle, TezCounter writesCounter, TezCounter serializedUncompressedBytes) {
-      this.compressor = CodecPool.getCompressor(codec);
-      this.rle = rle;
-      this.writtenRecordsCounter = writesCounter;
-      this.serializedUncompressedBytes = serializedUncompressedBytes;
-    }
-
-    protected void Writer(OutputStream outputStream) throws IOException {
-
-
     }
 
 
