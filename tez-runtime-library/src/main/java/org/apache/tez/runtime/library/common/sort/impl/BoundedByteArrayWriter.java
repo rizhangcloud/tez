@@ -45,54 +45,7 @@ public class BoundedByteArrayWriter extends Writer {
     protected FileBackedBoundedByteArrayOutputStream outputStream;
 
 
-    public BoundedByteArrayWriter(Configuration conf, FileSystem rfs, Path file,
-                                  Class keyClass, Class valueClass,
-                                  CompressionCodec codec, TezCounter writesCounter, TezCounter serializedBytesCounter,
-                                  boolean rle)
-    {
-        super(codec,rle,writesCounter, serializedBytesCounter);
-        this.outputStream = new FileBackedBoundedByteArrayOutputStream(null, null, rfs, file, codec, rle);
-    }
 
-
-    public byte[] getData() throws IOException {
-        return outputStream.memStream.getBuffer();
-    }
-
-    /*??? */
-    public long getRawLength() {
-        if(this.outputStream.out instanceof FileBackedBoundedByteArrayOutputStream)
-        {
-            return outputStream.memStream.size();
-        }
-        else
-        {
-            return decompressedBytesWritten;
-        }
-    }
-
-    /*??? assuming no compression in event data ? */
-    public long getCompressedLength() {
-
-        if(this.outputStream.out instanceof FileBackedBoundedByteArrayOutputStream)
-        {
-            return outputStream.memStream.size();
-        }
-        else
-        {
-            return compressedBytesWritten;
-        }
-    }
-
-    public void close() throws IOException {
-        if (this.hasOverflowed == true)
-            super.close();
-        else {
-            // Close the stream
-            out.close();
-            out = null;
-        }
-    }
 
 }
 

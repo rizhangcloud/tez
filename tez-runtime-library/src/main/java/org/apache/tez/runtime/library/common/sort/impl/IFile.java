@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import org.apache.hadoop.io.*;
 import org.apache.tez.common.io.NonSyncDataOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,11 +38,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.DataInputBuffer;
-import org.apache.hadoop.io.DataOutputBuffer;
 import org.apache.tez.runtime.library.utils.BufferUtils;
-import org.apache.hadoop.io.IOUtils;
-import org.apache.hadoop.io.WritableUtils;
 import org.apache.hadoop.io.compress.CodecPool;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
@@ -118,7 +115,7 @@ public class IFile {
     @VisibleForTesting
     boolean sameKey = false;
 
-    boolean hasOverflowed=false;
+    boolean hasOverflowed = false;
 
     final int RLE_MARKER_SIZE = WritableUtils.getVIntSize(RLE_MARKER);
     final int V_END_MARKER_SIZE = WritableUtils.getVIntSize(V_END_MARKER);
@@ -141,6 +138,7 @@ public class IFile {
      */
 
     /* Note: the new first Writer constructor which does not create file. */
+    /*
     public Writer(Configuration conf, FileSystem fs, Path file,
                   Class keyClass, Class valueClass,
                   CompressionCodec codec,
@@ -151,6 +149,7 @@ public class IFile {
 
       ownOutputStream = true;
     }
+     */
 
     /* Note: the second Writer constructor */
     protected Writer(TezCounter writesCounter, TezCounter serializedBytesCounter, boolean rle) {
@@ -160,7 +159,7 @@ public class IFile {
     }
 
     /* The old third constructor, which is obsolete now. Now can not input the FSDataOutputStream to a
-    *  Writer constructor. */
+     *  Writer constructor. */
     public Writer(Configuration conf, FSDataOutputStream outputStream,
                   Class keyClass, Class valueClass, CompressionCodec codec, TezCounter writesCounter,
                   TezCounter serializedBytesCounter) throws IOException {
@@ -185,14 +184,14 @@ public class IFile {
         if (this.compressor != null) {
           this.compressor.reset();
           this.compressedOut = codec.createOutputStream(checksumOut, compressor);
-          this.out = new FSDataOutputStream(this.compressedOut,  null);
+          this.out = new FSDataOutputStream(this.compressedOut, null);
           this.compressOutput = true;
         } else {
           LOG.warn("Could not obtain compressor from CodecPool");
-          this.out = new FSDataOutputStream(checksumOut,null);
+          this.out = new FSDataOutputStream(checksumOut, null);
         }
       } else {
-        this.out = new FSDataOutputStream(checksumOut,null);
+        this.out = new FSDataOutputStream(checksumOut, null);
       }
       writeHeader(outputStream);
 
@@ -214,28 +213,28 @@ public class IFile {
        stream.
      */
     public Writer(Configuration conf, FileSystem rfs, Path file,
-        Class keyClass, Class valueClass,
-        CompressionCodec codec, TezCounter writesCounter, TezCounter serializedBytesCounter,
-        boolean rle) throws IOException {
+                  Class keyClass, Class valueClass,
+                  CompressionCodec codec, TezCounter writesCounter, TezCounter serializedBytesCounter,
+                  boolean rle, boolean dataViaEventEnabled) throws IOException {
 
       //this.rawOut = outputStream;//???: how to get the rawout?
       this.writtenRecordsCounter = writesCounter;
       this.serializedUncompressedBytes = serializedBytesCounter;
 
       //this.start = this.rawOut.getPos(); //???
-      this.start=0;
+      this.start = 0;
       this.rle = rle;
 
       //this.out=new FileBackedBoundedByteArrayOutputStream(this.compressedOut, null, file, codec, rle);
-      this.out=new FileBackedBoundedByteArrayOutputStream(null, null, rfs, file, codec, rle);
-      this.hasOverflowed = ((FileBackedBoundedByteArrayOutputStream)this.out).hasOverflowed();
+      this.out = new FileBackedBoundedByteArrayOutputStream(null, null, rfs, file, codec, rle);
+      this.hasOverflowed = ((FileBackedBoundedByteArrayOutputStream) this.out).hasOverflowed();
 
       //writeHeader(outputStream); // ??? moved inside the new stream
 
       if (keyClass != null) {
         this.closeSerializers = true;
         SerializationFactory serializationFactory =
-          new SerializationFactory(conf);
+                new SerializationFactory(conf);
         this.keySerializer = serializationFactory.getSerializer(keyClass);
         this.keySerializer.open(buffer);
         this.valueSerializer = serializationFactory.getSerializer(valueClass);
@@ -244,18 +243,19 @@ public class IFile {
         this.closeSerializers = false;
       }
     }
-
+    /*
     public Writer(Configuration conf, FileSystem fs, Path file, TezCounter writesCounter, TezCounter serializedUncompressedBytes) throws IOException {
       this(conf, fs, file, null, null, null, writesCounter, serializedUncompressedBytes);
 
     }
+     */
 
 
     public Writer(CompressionCodec codec, boolean rle, TezCounter writesCounter, TezCounter serializedUncompressedBytes) {
       this.compressor = CodecPool.getCompressor(codec);
       this.rle = rle;
       this.writtenRecordsCounter = writesCounter;
-      this.serializedUncompressedBytes=serializedUncompressedBytes;
+      this.serializedUncompressedBytes = serializedUncompressedBytes;
     }
 
     protected void Writer(OutputStream outputStream) throws IOException {
@@ -271,7 +271,6 @@ public class IFile {
         headerWritten = true;
       }
     }
-
 
 
     public boolean hasSpilled() {
@@ -290,6 +289,15 @@ public class IFile {
       if (closeSerializers) {
         keySerializer.close();
         valueSerializer.close();
+      }
+
+      /*??? handle the close in dataViaEvent case */
+      if (this.hasOverflowed == false)
+      {
+        // Close the stream
+        out.close();
+        out = null;
+        return;
       }
 
       // write V_END_MARKER as needed
@@ -329,9 +337,9 @@ public class IFile {
       }
       if (LOG.isDebugEnabled()) {
         LOG.debug("Total keys written=" + numRecordsWritten + "; rleEnabled=" + rle + "; Savings" +
-            "(due to multi-kv/rle)=" + totalKeySaving + "; number of RLEs written=" +
-            rleWritten + "; compressedLen=" + compressedBytesWritten + "; rawLen="
-            + decompressedBytesWritten);
+                "(due to multi-kv/rle)=" + totalKeySaving + "; number of RLEs written=" +
+                rleWritten + "; compressedLen=" + compressedBytesWritten + "; rawLen="
+                + decompressedBytesWritten);
       }
     }
 
@@ -351,7 +359,7 @@ public class IFile {
       if (!sameKey) {
         keySerializer.serialize(key);
         keyLength = buffer.getLength();
-        assert(keyLength >= 0);
+        assert (keyLength >= 0);
         if (rle && (keyLength == previous.getLength())) {
           sameKey = (BufferUtils.compare(previous, buffer) == 0);
         }
@@ -360,11 +368,11 @@ public class IFile {
       // Append the 'value'
       valueSerializer.serialize(value);
       int valueLength = buffer.getLength() - keyLength;
-      assert(valueLength >= 0);
+      assert (valueLength >= 0);
       if (!sameKey) {
         //dump entire key value pair
         writeKVPair(buffer.getData(), 0, keyLength, buffer.getData(),
-            keyLength, buffer.getLength() - keyLength);
+                keyLength, buffer.getLength() - keyLength);
         if (rle) {
           previous.reset();
           previous.write(buffer.getData(), 0, keyLength); //store the key
@@ -406,7 +414,7 @@ public class IFile {
      */
     public void appendValue(DataInputBuffer value) throws IOException {
       int valueLength = value.getLength() - value.getPosition();
-      assert(valueLength >= 0);
+      assert (valueLength >= 0);
       writeValue(value.getData(), value.getPosition(), valueLength);
       buffer.reset();
       ++numRecordsWritten;
@@ -421,7 +429,7 @@ public class IFile {
      * @throws IOException
      */
     public <V> void appendValues(Iterator<V> valuesItr) throws IOException {
-      while(valuesItr.hasNext()) {
+      while (valuesItr.hasNext()) {
         appendValue(valuesItr.next());
       }
     }
@@ -440,7 +448,7 @@ public class IFile {
         append(key, valuesItr.next()); //append first KV pair
       }
       //append the remaining values
-      while(valuesItr.hasNext()) {
+      while (valuesItr.hasNext()) {
         appendValue(valuesItr.next());
       }
     }
@@ -451,17 +459,16 @@ public class IFile {
      * IFile.REPEAT_KEY as the first key. It is caller's responsibility to pass non-negative
      * key/value lengths. Otherwise,IndexOutOfBoundsException could be thrown at runtime.
      *
-     *
      * @param key
      * @param value
      * @throws IOException
      */
     public void append(DataInputBuffer key, DataInputBuffer value) throws IOException {
       int keyLength = key.getLength() - key.getPosition();
-      assert(key == REPEAT_KEY || keyLength >=0);
+      assert (key == REPEAT_KEY || keyLength >= 0);
 
       int valueLength = value.getLength() - value.getPosition();
-      assert(valueLength >= 0);
+      assert (valueLength >= 0);
 
       sameKey = (key == REPEAT_KEY);
       if (!sameKey && rle) {
@@ -470,7 +477,7 @@ public class IFile {
 
       if (!sameKey) {
         writeKVPair(key.getData(), key.getPosition(), keyLength,
-            value.getData(), value.getPosition(), valueLength);
+                value.getData(), value.getPosition(), valueLength);
         if (rle) {
           BufferUtils.copy(key, previous);
         }
@@ -487,7 +494,7 @@ public class IFile {
       out.write(data, offset, length);
       // Update bytes written
       decompressedBytesWritten +=
-          length + WritableUtils.getVIntSize(length);
+              length + WritableUtils.getVIntSize(length);
       if (serializedUncompressedBytes != null) {
         serializedUncompressedBytes.increment(length);
       }
@@ -495,7 +502,7 @@ public class IFile {
     }
 
     protected void writeKVPair(byte[] keyData, int keyPos, int keyLength,
-        byte[] valueData, int valPos, int valueLength) throws IOException {
+                               byte[] valueData, int valPos, int valueLength) throws IOException {
       writeValueMarker(out);
       WritableUtils.writeVInt(out, keyLength);
       WritableUtils.writeVInt(out, valueLength);
@@ -504,8 +511,8 @@ public class IFile {
 
       // Update bytes written
       decompressedBytesWritten +=
-          keyLength + valueLength + WritableUtils.getVIntSize(keyLength)
-              + WritableUtils.getVIntSize(valueLength);
+              keyLength + valueLength + WritableUtils.getVIntSize(keyLength)
+                      + WritableUtils.getVIntSize(valueLength);
       if (serializedUncompressedBytes != null) {
         serializedUncompressedBytes.increment(keyLength + valueLength);
       }
@@ -540,7 +547,7 @@ public class IFile {
     }
 
     // Required for mark/reset
-    public DataOutputStream getOutputStream () {
+    public DataOutputStream getOutputStream() {
       return out;
     }
 
@@ -551,11 +558,24 @@ public class IFile {
     }
 
     public long getRawLength() {
-      return decompressedBytesWritten;
+      if (out instanceof FileBackedBoundedByteArrayOutputStream) {
+        return ((FileBackedBoundedByteArrayOutputStream) out).memStream.size();
+      } else {
+        return decompressedBytesWritten;
+      }
     }
 
+    /*??? assuming no compression in event data ? */
     public long getCompressedLength() {
-      return compressedBytesWritten;
+
+      if(out instanceof FileBackedBoundedByteArrayOutputStream)
+      {
+        return ((FileBackedBoundedByteArrayOutputStream) out).memStream.size();
+      }
+      else
+      {
+        return compressedBytesWritten;
+      }
     }
   }
 

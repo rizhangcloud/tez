@@ -294,8 +294,14 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
       writer = new IFile.Writer(conf, rfs, finalOutPath, keyClass, valClass,
             codec, outputRecordsCounter, outputRecordBytesCounter);
        */
+
+      /*
       writer = new BoundedByteArrayWriter(conf, rfs, finalOutPath, keyClass, valClass,
               codec, outputRecordsCounter, outputRecordBytesCounter, false);
+       */
+
+      writer = new  Writer(conf,  rfs, finalOutPath, keyClass, valClass,
+              codec, outputRecordsCounter, outputRecordBytesCounter, false, true );
 
 
       if (!SPILL_FILE_PERMS.equals(SPILL_FILE_PERMS.applyUMask(FsPermission.getUMask(conf)))) {
@@ -873,10 +879,9 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
     Preconditions.checkState(closed,
             "Only available after the Writer has been closed");
 
-    if(this.writer instanceof BoundedByteArrayWriter)
+    if(this.writer.getOutputStream() instanceof FileBackedBoundedByteArrayOutputStream)
     {
-      return ((BoundedByteArrayWriter)this.writer).getData();
-
+      return ((FileBackedBoundedByteArrayOutputStream)(this.writer.getOutputStream())).getBuffer();
     }
     else {
       /*??? get the data from the old stream */

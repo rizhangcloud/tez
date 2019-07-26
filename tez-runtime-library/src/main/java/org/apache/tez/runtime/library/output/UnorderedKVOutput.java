@@ -158,9 +158,11 @@ public class UnorderedKVOutput extends AbstractLogicalOutput {
       /* start supporting sending payloads via events */
       //boolean outputGenerated = this.kvWriter.close();
       DataMovementEventPayloadProto.Builder payloadBuilder = DataMovementEventPayloadProto.newBuilder();
+      /*
       LOG.info("Closing KVOutput: RawLength: " + this.kvWriter.getRawLength()
               + ", CompressedLength: " + this.kvWriter.getCompressedLength());
-
+      */
+      
       /*
        ??? below is used for Tez-2196
        */

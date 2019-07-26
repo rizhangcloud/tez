@@ -151,6 +151,7 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
         }
     }
 
+    /*??? redundant? */
     protected void writeHeader(OutputStream outputStream) throws IOException {
         if (!headerWritten) {
             outputStream.write(HEADER, 0, HEADER.length - 1);
@@ -158,6 +159,12 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
             headerWritten = true;
         }
     }
+
+
+    public byte[] getBuffer() throws IOException {
+        return this.memStream.getBuffer();
+    }
+
 
     public boolean hasOverflowed() {
             return bufferIsFull;
