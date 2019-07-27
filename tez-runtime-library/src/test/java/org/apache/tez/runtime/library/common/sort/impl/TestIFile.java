@@ -190,23 +190,13 @@ public class TestIFile {
     FSDataOutputStream out;
 
     // Check Key length exceeding MAX_BUFFER_SIZE
-
-    /* ??? the old writer
     out = localFs.create(outputPath);
     writer = new IFile.Writer(defaultConf, out,
             Text.class, Text.class, null, null, null, false);
-    */
-    writer = new IFile.Writer(defaultConf, localFs, outputPath,
-            Text.class, Text.class, null, null, null, false);
-
-
     writer.append(longString, shortString);
     writer.close();
 
-    /* ??? the old writer
     out.close();
-     */
-    writer.getOutputStream().close();
 
     // Set this to a smaller value for testing
     IFile.Reader.MAX_BUFFER_SIZE = 16;
@@ -223,21 +213,13 @@ public class TestIFile {
     reader.close();
 
     // Check Value length exceeding MAX_BUFFER_SIZE
-    /* ??? use new stream
     out = localFs.create(outputPath);
     writer = new IFile.Writer(defaultConf, out,
             Text.class, Text.class, null, null, null, false);
-    */
-    writer = new IFile.Writer(defaultConf, localFs, outputPath,
-            Text.class, Text.class, null, null, null, false);
-
     writer.append(shortString, longString);
     writer.close();
 
-    /* ??? use new stream
     out.close();
-     */
-    writer.getOutputStream().close();
 
     // Set this to a smaller value for testing
     IFile.Reader.MAX_BUFFER_SIZE = 16;
@@ -255,20 +237,13 @@ public class TestIFile {
     reader.close();
 
     // Check Key length not getting doubled
-    /* ??? use new stream
     out = localFs.create(outputPath);
     writer = new IFile.Writer(defaultConf, out,
-            Text.class, Text.class, null, null, null, false);
-     */
-    writer = new IFile.Writer(defaultConf, localFs, outputPath,
             Text.class, Text.class, null, null, null, false);
     writer.append(longString, shortString);
     writer.close();
 
-    /* ??? use new stream
     out.close();
-    */
-    writer.getOutputStream().close();
 
     // Set this to a smaller value for testing
     IFile.Reader.MAX_BUFFER_SIZE = 32;
@@ -308,15 +283,9 @@ public class TestIFile {
   //test with sorted data and repeat keys
   public void testWithRLEMarker() throws IOException {
     //Test with append(Object, Object)
-    /* ??? use new stream */
-    /*
     FSDataOutputStream out = localFs.create(outputPath);
     IFile.Writer writer = new IFile.Writer(defaultConf, out,
         Text.class, IntWritable.class, codec, null, null, true);
-     */
-
-    IFile.Writer writer = new IFile.Writer(defaultConf, localFs, outputPath,
-            Text.class, IntWritable.class, codec, null, null, true);
 
     Text key = new Text("key0");
     IntWritable value = new IntWritable(0);
@@ -332,12 +301,7 @@ public class TestIFile {
     writer.append(key, value);
     assertFalse(writer.sameKey);
     writer.close();
-
-    /* ??? use new stream */
-    /*
     out.close();
-     */
-    writer.getOutputStream().close();
 
 
     //Test with append(DataInputBuffer key, DataInputBuffer value)
@@ -345,17 +309,9 @@ public class TestIFile {
     int keyLength = 4;
     int valueLength = 6;
     int pos = 0;
-
-    /* ??? use new stream */
-    /*
     out = localFs.create(outputPath);
     writer = new IFile.Writer(defaultConf, out,
         Text.class, IntWritable.class, codec, null, null, true);
-     */
-
-    writer = new IFile.Writer(defaultConf, localFs, outputPath,
-            Text.class, IntWritable.class, codec, null, null, true);
-
 
     BoundedByteArrayOutputStream boundedOut = new BoundedByteArrayOutputStream(1024*1024);
     Writer inMemWriter = new InMemoryWriter(boundedOut, true);
@@ -395,15 +351,7 @@ public class TestIFile {
     assertFalse(inMemWriter.sameKey);
 
     writer.close();
-
-
-    /* ??? use new stream */
-    /*
     out.close();
-     */
-    writer.getOutputStream().close();
-
-
     inMemWriter.close();
     boundedOut.close();
   }
@@ -813,25 +761,11 @@ public class TestIFile {
 
   private Writer writeTestFile(boolean rle, boolean repeatKeys,
       List<KVPair> data, CompressionCodec codec) throws IOException {
-    /* ??? use new writer */
-    /*
     FSDataOutputStream out = localFs.create(outputPath);
     IFile.Writer writer = new IFile.Writer(defaultConf, out,
         Text.class, IntWritable.class, codec, null, null, rle);
-    */
-
-
-    IFile.Writer writer = new IFile.Writer(defaultConf, localFs, outputPath,
-            Text.class, IntWritable.class, codec, null, null, rle);
-
     writeTestFile(writer, repeatKeys, data);
-
-    /* ??? use new writer */
-    /*
     out.close();
-     */
-    writer.getOutputStream().close();
-
     return  writer;
   }
 
@@ -860,28 +794,11 @@ public class TestIFile {
 
   private Writer writeTestFileUsingDataBuffer(boolean rle, boolean repeatKeys,
       List<KVPair> data, CompressionCodec codec) throws IOException {
-
-    /*??? use new writer */
-    /*
     FSDataOutputStream out = localFs.create(outputPath);
     IFile.Writer writer = new IFile.Writer(defaultConf, out,
         Text.class, IntWritable.class, codec, null, null, rle);
-     */
-
-
-    FSDataOutputStream out = localFs.create(outputPath);
-    IFile.Writer writer = new IFile.Writer(defaultConf, localFs, outputPath,
-            Text.class, IntWritable.class, codec, null, null, rle);
-
     writeTestFileUsingDataBuffer(writer, repeatKeys, data);
-
-    /*??? use new writer */
-    /*
     out.close();
-     */
-    writer.getOutputStream().close();
-
-
     return writer;
   }
 
