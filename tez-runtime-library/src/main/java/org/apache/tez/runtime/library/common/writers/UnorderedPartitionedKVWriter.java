@@ -710,6 +710,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
   public List<Event> close() throws IOException, InterruptedException {
     // In case there are buffers to be spilled, schedule spilling
     closed = true;
+
     scheduleSpill(true);
     List<Event> eventList = Lists.newLinkedList();
     isShutdown.set(true);
@@ -741,6 +742,23 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
       List<Event> events = Lists.newLinkedList();
       if (!pipelinedShuffle) {
         if (skipBuffers) {
+
+          /* ??? Tez-4075: dataViaEvent: backup the buffer before close the writer */
+
+          //??? a temporary holder for the stream buffer
+          byte[] tmpBuffer;
+
+          if (!writer.hasSpilled()) {
+            tmpBuffer =
+                    new byte[((FileBackedBoundedByteArrayOutputStream) writer.getOutputStream()).getBuffer().length];
+            System.arraycopy(((FileBackedBoundedByteArrayOutputStream) writer.getOutputStream()).getBuffer(),
+                    0, tmpBuffer, 0,
+                    ((FileBackedBoundedByteArrayOutputStream) writer.getOutputStream()).getBuffer().length);
+          }
+          else{
+            tmpBuffer = new byte[0];
+          }
+
           writer.close();
           long rawLen = writer.getRawLength();
           long compLen = writer.getCompressedLength();
@@ -770,20 +788,23 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
             fileOutputBytesCounter.increment(compLen + indexFileSizeEstimate);
           }
           eventList.add(generateVMEvent());
-          eventList.add(generateDMEvent(false, -1, false, outputContext
-                  .getUniqueIdentifier(), emptyPartitions));
 
-          /* ??? enable dataEvent */
-          /*
+          //eventList.add(generateDMEvent(false, -1, false, outputContext
+                  //.getUniqueIdentifier(), emptyPartitions));
+
+          /* ??? enable dataViaEvent */
           if (writer.hasSpilled()) {
             eventList.add(generateDMEvent(false, -1, false, outputContext
                     .getUniqueIdentifier(), emptyPartitions));
           } else {
-            eventList.add(generateDMEvent2(false, -1, false,
-                    writer.getOutputStream()
-                    writer.getDataBuffer()));
+            /* ??? add condition: feature enabled or not, returnEvents.size(), data size
+            if (dataViaEventsEnabled && (returnEvents.size()>0) && this.kvWriter.getCompressedLength()
+                    <= dataViaEventsMaxSize)
+            */
+            /*??? lastSpill must be true */
+            eventList.add(generateDMEvent2(false, -1, true,
+                    tmpBuffer));
           }
-           */
 
           return eventList;
         }
@@ -842,51 +863,6 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
       return events;
     }
   }
-
-  /* originally implemented in FileBasedKVWriter */
-  /* start ???*/
-
-  public long getRawLength() {
-    Preconditions.checkState(closed, "Only available after the Writer has been closed");
-      return this.writer.getRawLength();
-
-  }
-
-
-  public long getCompressedLength() {
-    Preconditions.checkState(closed, "Only available after the Writer has been closed");
-      return this.writer.getCompressedLength();
-  }
-
-  public byte[] getData() throws IOException {
-    Preconditions.checkState(closed,
-            "Only available after the Writer has been closed");
-
-    if(this.writer.getOutputStream() instanceof FileBackedBoundedByteArrayOutputStream)
-    {
-      return ((FileBackedBoundedByteArrayOutputStream)(this.writer.getOutputStream())).getBuffer();
-    }
-    else {
-      /*??? get the data from the old stream */
-      FSDataInputStream inStream = null;
-
-      byte[] buf = null;
-      try {
-
-        inStream = rfs.open(finalOutPath); /* ??? finalOutPath */
-        buf = new byte[(int) getCompressedLength()];
-        IOUtils.readFully(inStream, buf, 0, (int) getCompressedLength());
-      } finally {
-        if (inStream != null) {
-          inStream.close();
-        }
-      }
-      return buf;
-    }
-  }
-
-  /* end */
-
 
 
   private BitSet getEmptyPartitions(int[] recordsPerPartition) {
@@ -948,10 +924,10 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
   }
 
 
-  /* To enable the date event: Tez-4075
+  /* To enable the dateViaEvent: Tez-4075
   * cannot send compressed data?
   * */
-  /*
+
   private Event generateDMEvent2(boolean addSpillDetails, int spillId,
                                 boolean isLastSpill,  byte[] data)
           throws IOException {
@@ -960,40 +936,31 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
     DataMovementEventPayloadProto.Builder payloadBuilder = DataMovementEventPayloadProto
             .newBuilder();
 
-
-    //assertTrue(isLastSpill);
+    //assertTrue(isLastSpill); //??? necessary?
 
     if (addSpillDetails) {
       payloadBuilder.setSpillId(spillId);
       payloadBuilder.setLastEvent(isLastSpill);
     }
 
-    payloadBuilder.setData(data, data.length);
-    //payloadBuilder.setData()
-    //payloadBuilder.setData(payloadBuilder.getData()); //???
+    /* start creating a DataProto and setting data */
 
-
-    if (dataViaEventsEnabled && (returnEvents.size()>0) && this.kvWriter.getCompressedLength()
-            <= dataViaEventsMaxSize) {
-      LOG.info("Serialzing actual data into DataMovementEvent, dataSize: " + this.kvWriter.getCompressedLength());
-      byte[] data = this.kvWriter.getData();
-
-      ShuffleUserPayloads.DataProto.Builder dataProtoBuilder = ShuffleUserPayloads.DataProto.newBuilder();
-
-      dataProtoBuilder.setData(ByteString.copyFrom(data));
-      dataProtoBuilder.setRawLength((int) this.kvWriter.getRawLength());
-      dataProtoBuilder.setCompressedLength((int) this.kvWriter.getCompressedLength());
-      payloadBuilder.setData(dataProtoBuilder.build());
-    }
-
+    LOG.info("Serialzing actual data into DataMovementEvent, dataSize: " + this.writer.getCompressedLength());
 
     ShuffleUserPayloads.DataProto.Builder dataProtoBuilder = ShuffleUserPayloads.DataProto.newBuilder();
 
+    dataProtoBuilder.setData(ByteString.copyFrom(data));
+    dataProtoBuilder.setRawLength((int) this.writer.getRawLength());
+
+    //can not send compressed data ???
+    dataProtoBuilder.setCompressedLength((int) this.writer.getCompressedLength());
+    payloadBuilder.setData(dataProtoBuilder.build());
+    /* end */
 
     ByteBuffer payload = payloadBuilder.build().toByteString().asReadOnlyByteBuffer();
     return CompositeDataMovementEvent.create(0, numPartitions, payload);
   }
-   */
+
 
   private void cleanupCurrentBuffer() {
     currentBuffer.cleanup();

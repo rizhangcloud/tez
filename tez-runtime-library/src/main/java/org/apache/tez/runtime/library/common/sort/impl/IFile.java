@@ -28,6 +28,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import com.google.common.base.Preconditions;
+import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.io.*;
 import org.apache.tez.common.io.NonSyncDataOutputStream;
 import org.slf4j.Logger;
@@ -546,7 +548,7 @@ public class IFile {
       }
     }
 
-    /*??? assuming no compression in event data ? */
+    /*??? assuming no compression in dataViaEvent ? */
     public long getCompressedLength() {
 
       if(out instanceof FileBackedBoundedByteArrayOutputStream)
@@ -558,6 +560,40 @@ public class IFile {
         return compressedBytesWritten;
       }
     }
+
+    /* ??? originally implemented in FileBasedKVWriter. To enable dataViaEvent, add it back */
+    /*
+    public byte[] getData() throws IOException {
+
+      Preconditions.checkState(this.closed,
+              "Only available after the Writer has been closed");
+
+
+      if(this.getOutputStream() instanceof FileBackedBoundedByteArrayOutputStream)
+      {
+        return ((FileBackedBoundedByteArrayOutputStream)(this.getOutputStream())).getBuffer();
+      }
+      //else
+        //return null;
+      else {
+        //m the old stream
+        FSDataInputStream inStream = null;
+
+        byte[] buf = null;
+        try {
+
+          inStream = rfs.open(finalOutPath); //??? finalOutPath
+          buf = new byte[(int) getCompressedLength()];
+          IOUtils.readFully(inStream, buf, 0, (int) getCompressedLength());
+        } finally {
+          if (inStream != null) {
+            inStream.close();
+          }
+        }
+        return buf;
+      }
+    }*/
+
   }
 
   /**
