@@ -275,6 +275,7 @@ public class IFile {
       }
 
       /*??? handle the close in dataViaEvent case */
+      /*
       if (this.hasOverflowed == false)
       {
         // Close the stream
@@ -282,6 +283,7 @@ public class IFile {
         out = null;
         return;
       }
+       */
 
       // write V_END_MARKER as needed
       writeValueMarker(out);
