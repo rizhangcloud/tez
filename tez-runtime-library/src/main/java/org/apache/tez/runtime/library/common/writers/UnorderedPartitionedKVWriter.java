@@ -302,7 +302,8 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
               codec, outputRecordsCounter, outputRecordBytesCounter, false, true );
 
 
-      if (!SPILL_FILE_PERMS.equals(SPILL_FILE_PERMS.applyUMask(FsPermission.getUMask(conf)))) {
+      if ((!SPILL_FILE_PERMS.equals(SPILL_FILE_PERMS.applyUMask(FsPermission.getUMask(conf))))
+        &&(rfs.exists(finalOutPath))) {
         rfs.setPermission(finalOutPath, SPILL_FILE_PERMS);
       }
     } else {
@@ -803,6 +804,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
             */
             /*??? lastSpill must be true */
             eventList.add(generateDMEvent2(false, -1, true,
+                    outputContext.getUniqueIdentifier(), emptyPartitions,
                     tmpBuffer));
           }
 
@@ -929,7 +931,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
   * */
 
   private Event generateDMEvent2(boolean addSpillDetails, int spillId,
-                                boolean isLastSpill,  byte[] data)
+                                boolean isLastSpill, String pathComponent, BitSet emptyPartitions, byte[] data)
           throws IOException {
 
     outputContext.notifyProgress();
@@ -938,17 +940,32 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
 
     //assertTrue(isLastSpill); //??? necessary?
 
+    String host = getHost();
+    if (emptyPartitions.cardinality() != 0) {
+      // Empty partitions exist
+      ByteString emptyPartitionsByteString =
+              TezCommonUtils.compressByteArrayToByteString(TezUtilsInternal.toByteArray
+                      (emptyPartitions), deflater.get());
+      payloadBuilder.setEmptyPartitions(emptyPartitionsByteString);
+    }
+
+
+    if (emptyPartitions.cardinality() != numPartitions) {
+      // Populate payload only if at least 1 partition has data
+      payloadBuilder.setHost(host);
+      payloadBuilder.setPort(getShufflePort());
+      payloadBuilder.setPathComponent(pathComponent);
+    }
+
+
     if (addSpillDetails) {
       payloadBuilder.setSpillId(spillId);
       payloadBuilder.setLastEvent(isLastSpill);
     }
 
     /* start creating a DataProto and setting data */
-
     LOG.info("Serialzing actual data into DataMovementEvent, dataSize: " + this.writer.getCompressedLength());
-
     ShuffleUserPayloads.DataProto.Builder dataProtoBuilder = ShuffleUserPayloads.DataProto.newBuilder();
-
     dataProtoBuilder.setData(ByteString.copyFrom(data));
     dataProtoBuilder.setRawLength((int) this.writer.getRawLength());
 

@@ -277,7 +277,7 @@ public class TestUnorderedPartitionedKVWriter {
     baseTest(0, 10, null, shouldCompress, -1, 0);
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 100000)
   public void testNoRecords_SinglePartition() throws IOException, InterruptedException {
     // skipBuffers
     baseTest(0, 1, null, shouldCompress, -1, 0);

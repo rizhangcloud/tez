@@ -87,6 +87,7 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
     IFileOutputStream checksumOut;
     long start = 0;
 
+    boolean ownOutputStream = false;
 
 
     public FileBackedBoundedByteArrayOutputStream(OutputStream out, FileSystem.Statistics stats,FileSystem rfs,
@@ -124,8 +125,7 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
                 outputStream = fs.create(file);
                 this.rawOut = outputStream;
                 this.checksumOut = new IFileOutputStream(outputStream);
-
-                this.start = this.rawOut.getPos(); //??? how to return to the IFile.writer caller?
+                this.start = this.rawOut.getPos();
 
                 if (this.codec != null) {
                     this.compressor = CodecPool.getCompressor(codec);
@@ -174,6 +174,38 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
         /* if the buffer is full, close the memory buffer */
         if(bufferIsFull)
             this.out.close();
+    }
+
+
+    public FSDataOutputStream getRawOut()
+    {
+        return rawOut;
+    }
+
+
+    public CompressionCodec getCodec(){
+        return codec;
+    }
+
+    public CompressionOutputStream getCompressedOut() {
+        return compressedOut;
+    }
+
+    public Compressor getCompressor() {
+        return compressor;
+    }
+    public boolean getCompressOutput(){
+        return compressOutput;
+    }
+
+    // de-dup keys or not
+    public boolean getRle() {
+        return rle;
+    }
+
+    public IFileOutputStream getChecksumOut()
+    {
+        return checksumOut;
     }
 
 }

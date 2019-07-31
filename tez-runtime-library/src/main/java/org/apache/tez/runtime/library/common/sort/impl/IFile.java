@@ -275,57 +275,71 @@ public class IFile {
       }
 
       /*??? handle the close in dataViaEvent case */
-      /*
-      if (this.hasOverflowed == false)
-      {
-        // Close the stream
-        out.close();
-        out = null;
-        return;
-      }
-       */
 
-      // write V_END_MARKER as needed
-      writeValueMarker(out);
 
-      // Write EOF_MARKER for key/value length
-      WritableUtils.writeVInt(out, EOF_MARKER);
-      WritableUtils.writeVInt(out, EOF_MARKER);
-      decompressedBytesWritten += 2 * WritableUtils.getVIntSize(EOF_MARKER);
-      //account for header bytes
-      decompressedBytesWritten += HEADER.length;
+      if(this.hasOverflowed) {
+        // write V_END_MARKER as needed
+        writeValueMarker(out);
 
-      // Close the underlying stream iff we own it...
-      if (ownOutputStream) {
-        out.close();
-      } else {
-        if (compressOutput) {
-          // Flush
-          compressedOut.finish();
-          compressedOut.resetState();
+        // Write EOF_MARKER for key/value length
+        WritableUtils.writeVInt(out, EOF_MARKER);
+        WritableUtils.writeVInt(out, EOF_MARKER);
+        decompressedBytesWritten += 2 * WritableUtils.getVIntSize(EOF_MARKER);
+        //account for header bytes
+        decompressedBytesWritten += HEADER.length;
+
+
+        // Close the underlying stream iff we own it...
+        if (ownOutputStream) {
+          out.close();
+        } else {
+          boolean compressOutputTmp = ((FileBackedBoundedByteArrayOutputStream)out).getCompressOutput();
+
+          if (compressOutputTmp) {
+            // Flush
+            CompressionOutputStream compressedOutTmp = ((FileBackedBoundedByteArrayOutputStream)out).getCompressedOut();
+            compressedOutTmp.finish();
+            compressedOutTmp.resetState();
+          }
+          // Write the checksum and flush the buffer
+          ((FileBackedBoundedByteArrayOutputStream)out).getChecksumOut().finish();
+          //checksumOut.finish();
         }
-        // Write the checksum and flush the buffer
-        checksumOut.finish();
-      }
-      //header bytes are already included in rawOut
-      compressedBytesWritten = rawOut.getPos() - start;
+        //header bytes are already included in rawOut
+        compressedBytesWritten = rawOut.getPos() - start;
 
+        if (writtenRecordsCounter != null) {
+          writtenRecordsCounter.increment(numRecordsWritten);
+        }
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Total keys written=" + numRecordsWritten + "; rleEnabled=" + rle + "; Savings" +
+                  "(due to multi-kv/rle)=" + totalKeySaving + "; number of RLEs written=" +
+                  rleWritten + "; compressedLen=" + compressedBytesWritten + "; rawLen="
+                  + decompressedBytesWritten);
+        }
+      }
+      else {
+        /* the case using in memory buffer */
+        if (ownOutputStream) {
+          out.close();
+        } else {
+          if (compressOutput) {
+            // Flush
+            compressedOut.finish();
+            compressedOut.resetState();
+          }
+          // Write the checksum and flush the buffer
+          //checksumOut.finish();
+        }
+      }
+
+      out = null;
       if (compressOutput) {
         // Return back the compressor
         CodecPool.returnCompressor(compressor);
         compressor = null;
       }
 
-      out = null;
-      if (writtenRecordsCounter != null) {
-        writtenRecordsCounter.increment(numRecordsWritten);
-      }
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Total keys written=" + numRecordsWritten + "; rleEnabled=" + rle + "; Savings" +
-                "(due to multi-kv/rle)=" + totalKeySaving + "; number of RLEs written=" +
-                rleWritten + "; compressedLen=" + compressedBytesWritten + "; rawLen="
-                + decompressedBytesWritten);
-      }
     }
 
     /**
