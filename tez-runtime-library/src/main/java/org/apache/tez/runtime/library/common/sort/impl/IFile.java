@@ -227,9 +227,11 @@ public class IFile {
       this.start = 0;
       this.rle = rle;
 
-      //this.out=new FileBackedBoundedByteArrayOutputStream(this.compressedOut, null, file, codec, rle);
+     //to use BoundedByteArrayWriter
+      /*
       this.out = new FileBackedBoundedByteArrayOutputStream(null, null, rfs, file, codec, rle);
       this.hasOverflowed = ((FileBackedBoundedByteArrayOutputStream) this.out).hasOverflowed();
+      */
 
       //writeHeader(outputStream); // ??? moved inside the new stream
 
