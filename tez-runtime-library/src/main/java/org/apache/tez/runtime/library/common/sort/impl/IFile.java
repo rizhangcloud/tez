@@ -117,7 +117,7 @@ public class IFile {
     @VisibleForTesting
     boolean sameKey = false;
 
-    boolean hasOverflowed = false;
+    boolean hasOverflowed = true;
 
     final int RLE_MARKER_SIZE = WritableUtils.getVIntSize(RLE_MARKER);
     final int V_END_MARKER_SIZE = WritableUtils.getVIntSize(V_END_MARKER);

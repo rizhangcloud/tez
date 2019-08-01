@@ -827,7 +827,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
           }
           updateTezCountersAndNotify();
           eventList.add(generateVMEvent());
-          eventList.add(generateDMEvent());
+          eventList.add(generateDMEvent());  //??? which generateDMEvent?
         } else {
           // if no data is generated, finalSpill would create VMEvent & add to finalEvents
           SpillResult result = finalSpill();

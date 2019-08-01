@@ -246,75 +246,75 @@ public class TestUnorderedPartitionedKVWriter {
     assertEquals(1, kvWriter.spillLimit);
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 1000000)
   public void testNoSpill() throws IOException, InterruptedException {
     baseTest(10, 10, null, shouldCompress, -1, 0);
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 1000000)
   public void testSingleSpill() throws IOException, InterruptedException {
     baseTest(50, 10, null, shouldCompress, -1, 0);
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 1000000)
   public void testMultipleSpills() throws IOException, InterruptedException {
     baseTest(200, 10, null, shouldCompress, -1, 0);
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 1000000)
   public void testMultipleSpillsWithSmallBuffer() throws IOException, InterruptedException {
     // numBuffers is much higher than available threads.
     baseTest(200, 10, null, shouldCompress, 512, 0, 9600);
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 1000000)
   public void testMergeBuffersAndSpill() throws IOException, InterruptedException {
     baseTest(200, 10, null, shouldCompress, 2048, 10);
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 1000000)
   public void testNoRecords() throws IOException, InterruptedException {
     baseTest(0, 10, null, shouldCompress, -1, 0);
   }
 
-  @Test(timeout = 100000)
+  @Test(timeout = 10000000)
   public void testNoRecords_SinglePartition() throws IOException, InterruptedException {
     // skipBuffers
     baseTest(0, 1, null, shouldCompress, -1, 0);
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 1000000)
   public void testSkippedPartitions() throws IOException, InterruptedException {
     baseTest(200, 10, Sets.newHashSet(2, 5), shouldCompress, -1, 0);
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 1000000)
   public void testNoSpill_SinglePartition() throws IOException, InterruptedException {
     baseTest(10, 1, null, shouldCompress, -1, 0);
   }
 
 
-  @Test(timeout = 10000)
+  @Test(timeout = 1000000)
   public void testRandomText() throws IOException, InterruptedException {
     textTest(100, 10, 2048, 0, 0, 0, false, true);
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 1000000)
   public void testLargeKeys() throws IOException, InterruptedException {
     textTest(0, 10, 2048, 10, 0, 0, false, true);
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 1000000)
   public void testLargevalues() throws IOException, InterruptedException {
     textTest(0, 10, 2048, 0, 10, 0, false, true);
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 1000000)
   public void testLargeKvPairs() throws IOException, InterruptedException {
     textTest(0, 10, 2048, 0, 0, 10, false, true);
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 1000000)
   public void testTextMixedRecords() throws IOException, InterruptedException {
     textTest(100, 10, 2048, 10, 10, 10, false, true);
   }
@@ -324,22 +324,22 @@ public class TestUnorderedPartitionedKVWriter {
     textTest(100, 10, 2048, 0, 0, 0, false, false);
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 1000000)
   public void testLargeKeysWithoutFinalMerge() throws IOException, InterruptedException {
     textTest(0, 10, 2048, 10, 0, 0, false, false);
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 1000000)
   public void testLargevaluesWithoutFinalMerge() throws IOException, InterruptedException {
     textTest(0, 10, 2048, 0, 10, 0, false, false);
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 1000000)
   public void testLargeKvPairsWithoutFinalMerge() throws IOException, InterruptedException {
     textTest(0, 10, 2048, 0, 0, 10, false, false);
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 1000000)
   public void testTextMixedRecordsWithoutFinalMerge() throws IOException, InterruptedException {
     textTest(100, 10, 2048, 10, 10, 10, false, false);
   }
@@ -607,38 +607,38 @@ public class TestUnorderedPartitionedKVWriter {
     }
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 1000000)
   public void testNoSpill_WithPipelinedShuffle() throws IOException, InterruptedException {
     baseTestWithPipelinedTransfer(10, 10, null, shouldCompress);
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 1000000)
   public void testSingleSpill_WithPipelinedShuffle() throws IOException, InterruptedException {
     baseTestWithPipelinedTransfer(50, 10, null, shouldCompress);
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 1000000)
   public void testMultipleSpills_WithPipelinedShuffle() throws IOException, InterruptedException {
     baseTestWithPipelinedTransfer(200, 10, null, shouldCompress);
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 1000000)
   public void testNoRecords_WithPipelinedShuffle() throws IOException, InterruptedException {
     baseTestWithPipelinedTransfer(0, 10, null, shouldCompress);
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 1000000)
   public void testNoRecords_SinglePartition_WithPipelinedShuffle() throws IOException, InterruptedException {
     // skipBuffers
     baseTestWithPipelinedTransfer(0, 1, null, shouldCompress);
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 1000000)
   public void testSkippedPartitions_WithPipelinedShuffle() throws IOException, InterruptedException {
     baseTestWithPipelinedTransfer(200, 10, Sets.newHashSet(2, 5), shouldCompress);
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 1000000)
   public void testLargeKvPairs_WithPipelinedShuffle() throws IOException, InterruptedException {
     textTest(0, 10, 2048, 10, 20, 50, true, false);
   }
