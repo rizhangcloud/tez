@@ -304,28 +304,37 @@ public class IFile {
         if (ownOutputStream) {
           out.close();
         } else {
-          boolean compressOutputTmp = ((FileBackedBoundedByteArrayOutputStream)out).getCompressOutput();
-
-          if (compressOutputTmp) {
-            // Flush
-            //compressedOut.finish();
-            //compressedOut.resetState();
             if(out instanceof FileBackedBoundedByteArrayOutputStream)
             {
-              CompressionOutputStream compressedOutTmp = ((FileBackedBoundedByteArrayOutputStream) out).getCompressedOut();
-              compressedOutTmp.finish();
-              compressedOutTmp.resetState();
+              boolean compressOutputTmp = ((FileBackedBoundedByteArrayOutputStream)out).getCompressOutput();
+              if (compressOutputTmp) {
+                CompressionOutputStream compressedOutTmp = ((FileBackedBoundedByteArrayOutputStream) out).getCompressedOut();
+                compressedOutTmp.finish();
+                compressedOutTmp.resetState();
+              }
               ((FileBackedBoundedByteArrayOutputStream)out).getChecksumOut().finish();
+
+              //header bytes are already included in rawOut  //???
+              compressedBytesWritten =
+                      ((FileBackedBoundedByteArrayOutputStream) out).getRawOut().getPos() -
+                              ((FileBackedBoundedByteArrayOutputStream) out).getStart();
             }else
             {
-              compressedOut.finish();
-              compressedOut.resetState();
+              if(compressOutput) {
+                // Flush
+                compressedOut.finish();
+                compressedOut.resetState();
+              }
               // Write the checksum and flush the buffer
               checksumOut.finish();
+
+              //header bytes are already included in rawOut  //???
+              compressedBytesWritten = rawOut.getPos() - start;
+
             }
           }
-        }
-        //header bytes are already included in rawOut
+
+        //header bytes are already included in rawOut  //???
         compressedBytesWritten = rawOut.getPos() - start;
 
         if (writtenRecordsCounter != null) {

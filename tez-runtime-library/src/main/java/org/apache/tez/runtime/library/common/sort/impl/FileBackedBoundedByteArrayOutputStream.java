@@ -182,6 +182,8 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
         return rawOut;
     }
 
+    public long getStart(){return start;};
+
 
     public CompressionCodec getCodec(){
         return codec;
