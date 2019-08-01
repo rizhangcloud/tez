@@ -118,6 +118,7 @@ public class IFile {
     boolean sameKey = false;
 
     boolean hasOverflowed = true;
+    boolean dataViaEventUsed = false;
 
     final int RLE_MARKER_SIZE = WritableUtils.getVIntSize(RLE_MARKER);
     final int V_END_MARKER_SIZE = WritableUtils.getVIntSize(V_END_MARKER);
@@ -275,9 +276,21 @@ public class IFile {
       }
 
       /*??? handle the close in dataViaEvent case */
-
-
-      if(this.hasOverflowed) {
+      if(!this.hasOverflowed) {
+        /* the case using in memory buffer */
+        if (ownOutputStream) {
+          out.close();
+        } else {
+          if (compressOutput) {
+            // Flush
+            compressedOut.finish();
+            compressedOut.resetState();
+          }
+          // Write the checksum and flush the buffer
+          //checksumOut.finish();
+        }
+      }
+      else {
         // write V_END_MARKER as needed
         writeValueMarker(out);
 
@@ -287,8 +300,6 @@ public class IFile {
         decompressedBytesWritten += 2 * WritableUtils.getVIntSize(EOF_MARKER);
         //account for header bytes
         decompressedBytesWritten += HEADER.length;
-
-
         // Close the underlying stream iff we own it...
         if (ownOutputStream) {
           out.close();
@@ -297,13 +308,22 @@ public class IFile {
 
           if (compressOutputTmp) {
             // Flush
-            CompressionOutputStream compressedOutTmp = ((FileBackedBoundedByteArrayOutputStream)out).getCompressedOut();
-            compressedOutTmp.finish();
-            compressedOutTmp.resetState();
+            //compressedOut.finish();
+            //compressedOut.resetState();
+            if(out instanceof FileBackedBoundedByteArrayOutputStream)
+            {
+              CompressionOutputStream compressedOutTmp = ((FileBackedBoundedByteArrayOutputStream) out).getCompressedOut();
+              compressedOutTmp.finish();
+              compressedOutTmp.resetState();
+              ((FileBackedBoundedByteArrayOutputStream)out).getChecksumOut().finish();
+            }else
+            {
+              compressedOut.finish();
+              compressedOut.resetState();
+              // Write the checksum and flush the buffer
+              checksumOut.finish();
+            }
           }
-          // Write the checksum and flush the buffer
-          ((FileBackedBoundedByteArrayOutputStream)out).getChecksumOut().finish();
-          //checksumOut.finish();
         }
         //header bytes are already included in rawOut
         compressedBytesWritten = rawOut.getPos() - start;
@@ -318,20 +338,7 @@ public class IFile {
                   + decompressedBytesWritten);
         }
       }
-      else {
-        /* the case using in memory buffer */
-        if (ownOutputStream) {
-          out.close();
-        } else {
-          if (compressOutput) {
-            // Flush
-            compressedOut.finish();
-            compressedOut.resetState();
-          }
-          // Write the checksum and flush the buffer
-          //checksumOut.finish();
-        }
-      }
+
 
       out = null;
       if (compressOutput) {
