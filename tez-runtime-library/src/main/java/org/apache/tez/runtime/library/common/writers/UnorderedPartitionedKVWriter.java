@@ -135,6 +135,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
   private volatile long spilledSize = 0;
 
   private boolean closed = false;
+  private boolean inMemBuffer = false;
 
   static final ThreadLocal<Deflater> deflater = new ThreadLocal<Deflater>() {
 
@@ -709,9 +710,15 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
 
   @Override
   public List<Event> close() throws IOException, InterruptedException {
-    // In case there are buffers to be spilled, schedule spilling
-    closed = true;
 
+    inMemBuffer = writer.InMemBuffer();
+    byte[] tmpBuffer =
+            new byte[((FileBackedBoundedByteArrayOutputStream) writer.getOutputStream()).getBuffer().length];
+    System.arraycopy(((FileBackedBoundedByteArrayOutputStream) writer.getOutputStream()).getBuffer(),
+            0, tmpBuffer, 0,
+            ((FileBackedBoundedByteArrayOutputStream) writer.getOutputStream()).getBuffer().length);
+
+    // In case there are buffers to be spilled, schedule spilling
     scheduleSpill(true);
     List<Event> eventList = Lists.newLinkedList();
     isShutdown.set(true);
@@ -724,6 +731,8 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
     } finally {
       spillLock.unlock();
     }
+
+
     if (spillException != null) {
       LOG.error(destNameTrimmed + ": " + "Error during spill, throwing");
       // Assuming close will be called on the same thread as the write
@@ -743,23 +752,6 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
       List<Event> events = Lists.newLinkedList();
       if (!pipelinedShuffle) {
         if (skipBuffers) {
-
-          /* ??? Tez-4075: dataViaEvent: backup the buffer before close the writer */
-
-          //??? a temporary holder for the stream buffer
-          byte[] tmpBuffer;
-
-          if (!writer.hasSpilled()) {
-            tmpBuffer =
-                    new byte[((FileBackedBoundedByteArrayOutputStream) writer.getOutputStream()).getBuffer().length];
-            System.arraycopy(((FileBackedBoundedByteArrayOutputStream) writer.getOutputStream()).getBuffer(),
-                    0, tmpBuffer, 0,
-                    ((FileBackedBoundedByteArrayOutputStream) writer.getOutputStream()).getBuffer().length);
-          }
-          else{
-            tmpBuffer = new byte[0];
-          }
-
           writer.close();
           long rawLen = writer.getRawLength();
           long compLen = writer.getCompressedLength();
@@ -794,7 +786,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
                   //.getUniqueIdentifier(), emptyPartitions));
 
           /* ??? enable dataViaEvent */
-          if (writer.hasSpilled()) {
+          if (!inMemBuffer) {
             eventList.add(generateDMEvent(false, -1, false, outputContext
                     .getUniqueIdentifier(), emptyPartitions));
           } else {
@@ -802,7 +794,9 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
             if (dataViaEventsEnabled && (returnEvents.size()>0) && this.kvWriter.getCompressedLength()
                     <= dataViaEventsMaxSize)
             */
-            /*??? lastSpill must be true */
+
+
+            //??? lastSpill must be true
             eventList.add(generateDMEvent2(false, -1, true,
                     outputContext.getUniqueIdentifier(), emptyPartitions,
                     tmpBuffer));

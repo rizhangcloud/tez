@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -53,7 +53,6 @@ import org.apache.tez.runtime.library.common.sort.impl.IFileOutputStream;
  * less than 512 bytes, it piggybacks the data to the event; if the data size is
  * more than 512 bytes, it uses the fs stream based writer in <code>Writer</code>
  * inside <code>IFile</code>
- *
  */
 @InterfaceAudience.Private
 @InterfaceStability.Unstable
@@ -61,19 +60,26 @@ import org.apache.tez.runtime.library.common.sort.impl.IFileOutputStream;
 public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
     //public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
     private static final Logger LOG = LoggerFactory.getLogger(FileBackedBoundedByteArrayOutputStream.class);
-    static final byte[] HEADER = new byte[] { (byte) 'T', (byte) 'I',
-            (byte) 'F' , (byte) 0};
+    static final byte[] HEADER = new byte[]{(byte) 'T', (byte) 'I',
+            (byte) 'F', (byte) 0};
     boolean headerWritten = false;
 
-    BoundedByteArrayOutputStream memStream;
-    FSDataOutputStream out;
+    //BoundedByteArrayOutputStream memStream = new BoundedByteArrayOutputStream(512);
+
+    //BoundedByteArrayOutputStream memStream;
+    //FSDataOutputStream out;
+    BoundedByteArrayOutputStream out;
+
+    private FSDataOutputStream internalBuffer;
+
     FileSystem fs;
     Path file;
 
     boolean bufferIsFull;
 
-    FSDataOutputStream rawOut;
+    FSDataOutputStream outputStream;
 
+    FSDataOutputStream rawOut;
 
     CompressionCodec codec;
 
@@ -89,103 +95,111 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
 
     boolean ownOutputStream = false;
 
+    private int bufferSize = 0;
 
-    public FileBackedBoundedByteArrayOutputStream(OutputStream out, FileSystem.Statistics stats,FileSystem rfs,
+
+    public FileBackedBoundedByteArrayOutputStream(BoundedByteArrayOutputStream out, FileSystem.Statistics stats, FileSystem rfs,
                                                   Path file, CompressionCodec codec, boolean rle) {
         super(out, stats);
+
+        this.out = out;
+
         this.fs = rfs;
         this.file = file;
 
-        this.memStream = new BoundedByteArrayOutputStream(512);
         //this.limit=bufferLimit;
-        this.bufferIsFull=false;
+        this.bufferIsFull = false;
 
         this.codec = codec;
         this.rle = rle;
+        if (this.codec != null) {
+            this.compressor = CodecPool.getCompressor(codec);
+            if (this.compressor != null) {
+                compressOutput = true;
+            }
+        }
     }
 
     public void write(int off) throws IOException {
-        write(ByteBuffer.allocate(4).putInt(off).array(), (int)this.rawOut.getPos(), 4);
+        write(ByteBuffer.allocate(4).putInt(off).array(), (int) this.rawOut.getPos(), 4);
     }
 
     @Override
     public void write(byte[] b, int off, int len) throws IOException {
-
-        FSDataOutputStream outputStream;
-
         if (bufferIsFull) {
-            out.write(b, off, len);
-        }
-        else {
-            try {
-                memStream.write(b, off, len);
-            } catch (EOFException e) {
-                /* The data in the buffer is over the limit, so creates a file based stream */
-                /*??? */
+            outputStream.write(b, off, len);
+        } else {
+            if (out.available() > len) {
+                out.write(b, off, len);
+                return;
+            } else {
                 outputStream = fs.create(file);
                 this.rawOut = outputStream;
                 this.checksumOut = new IFileOutputStream(outputStream);
                 this.start = this.rawOut.getPos();
 
-                if (this.codec != null) {
-                    this.compressor = CodecPool.getCompressor(codec);
-                    if (this.compressor != null) {
-                        this.compressor.reset();
-                        this.compressedOut = codec.createOutputStream(this.checksumOut, this.compressor);
-                        this.out = new FSDataOutputStream(this.compressedOut, null);
-                        this.compressOutput = true;
-                    } else {
-                        LOG.warn("Could not obtain compressor from CodecPool");
-                        this.out = new FSDataOutputStream(checksumOut, null);
-                    }
+                if (compressOutput) {
+                    this.compressedOut = codec.createOutputStream(this.checksumOut, this.compressor);
+                    this.outputStream = new FSDataOutputStream(this.compressedOut, null);
+                    this.compressOutput = true;
                 } else {
-                    this.out = new FSDataOutputStream(checksumOut, null);
+                    LOG.warn("Could not obtain compressor from CodecPool");
+                    this.outputStream = new FSDataOutputStream(checksumOut, null);
                 }
-
-                writeHeader(this.out);
-                /* end of creating file based stream */
-
-                bufferIsFull = true;
-                out.write(b, off, len);
             }
+
+            //writeHeader(this.outputStream);  //??? necessary
+
+            outputStream.write(this.out.getBuffer());
+            this.out.close();
+            bufferIsFull = true;
         }
     }
 
-    /*??? redundant? */
-    protected void writeHeader(OutputStream outputStream) throws IOException {
-        if (!headerWritten) {
-            outputStream.write(HEADER, 0, HEADER.length - 1);
-            outputStream.write((compressOutput) ? (byte) 1 : (byte) 0);
-            headerWritten = true;
+    public void close() throws IOException {
+        if (!bufferIsFull)
+            this.out.close();
+        else {
+            this.outputStream.close();
+            if (compressOutput) {
+                // Flush
+                compressedOut.finish();
+                compressedOut.resetState();
+            }
+            // Write the checksum and flush the buffer
+            checksumOut.finish();
         }
     }
-
 
     public byte[] getBuffer() throws IOException {
-        return this.memStream.getBuffer();
+        return this.out.getBuffer();
     }
 
 
     public boolean hasOverflowed() {
-            return bufferIsFull;
-        }
-
-    public void close() throws IOException {
-        /* if the buffer is full, close the memory buffer */
-        if(bufferIsFull)
-            this.out.close();
+        return bufferIsFull;
     }
 
+    public long getCompressedBytesWritten() {
+        if(bufferIsFull){
+            return this.rawOut.getPos() - this.start;
+        }
+        else
+        {
+            return this.out.getBuffer().length;
+        }
+    }
 
-    public FSDataOutputStream getRawOut()
-    {
+    public FSDataOutputStream getRawOut() {
         return rawOut;
     }
 
-    public long getStart(){return start;};
+    public long getStart() {
+        return start;
+    }
 
 
-    public CompressionCodec getCodec(){
+    public CompressionCodec getCodec() {
         return codec;
     }
 
@@ -196,7 +210,8 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
     public Compressor getCompressor() {
         return compressor;
     }
-    public boolean getCompressOutput(){
+
+    public boolean getCompressOutput() {
         return compressOutput;
     }
 
@@ -205,9 +220,23 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
         return rle;
     }
 
-    public IFileOutputStream getChecksumOut()
-    {
+    public IFileOutputStream getChecksumOut() {
         return checksumOut;
+    }
+
+    public FileBackedBoundedByteArrayOutputStream(OutputStream out, FileSystem.Statistics stats, FileSystem rfs,
+                                                  Path file, CompressionCodec codec, boolean rle) {
+        super(out, stats);
+        //this.memStream = new BoundedByteArrayOutputStream(512);
+
+        this.fs = rfs;
+        this.file = file;
+
+        //this.limit=bufferLimit;
+        this.bufferIsFull = false;
+
+        this.codec = codec;
+        this.rle = rle;
     }
 
 }

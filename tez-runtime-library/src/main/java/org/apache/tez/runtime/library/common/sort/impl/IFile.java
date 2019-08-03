@@ -117,7 +117,6 @@ public class IFile {
     @VisibleForTesting
     boolean sameKey = false;
 
-    boolean hasOverflowed = true;
     boolean dataViaEventUsed = false;
 
     final int RLE_MARKER_SIZE = WritableUtils.getVIntSize(RLE_MARKER);
@@ -138,7 +137,6 @@ public class IFile {
               writesCounter, serializedBytesCounter);
       ownOutputStream = true;
     }
-
 
     /* Note: the new first Writer constructor which does not create file. */
     /*
@@ -229,10 +227,15 @@ public class IFile {
       this.rle = rle;
 
       //this.out=new FileBackedBoundedByteArrayOutputStream(this.compressedOut, null, file, codec, rle);
-      this.out = new FileBackedBoundedByteArrayOutputStream(null, null, rfs, file, codec, rle);
-      this.hasOverflowed = ((FileBackedBoundedByteArrayOutputStream) this.out).hasOverflowed();
+      BoundedByteArrayOutputStream memStream = new BoundedByteArrayOutputStream(512);
+      //this.out = new FileBackedBoundedByteArrayOutputStream(null, null, rfs, file, codec, rle);
 
-      //writeHeader(outputStream); // ??? moved inside the new stream
+      this.out = new FileBackedBoundedByteArrayOutputStream(memStream, null, rfs, file, codec, rle);
+
+      //this.hasOverflowed = ((FileBackedBoundedByteArrayOutputStream) this.out).hasOverflowed();
+
+      /* ??? write the header from the beginning */
+      writeHeader(memStream);
 
       if (keyClass != null) {
         this.closeSerializers = true;
@@ -256,9 +259,16 @@ public class IFile {
       }
     }
 
-
-    public boolean hasSpilled() {
-      return this.hasOverflowed;
+    public boolean InMemBuffer() {
+      if (this.out instanceof FileBackedBoundedByteArrayOutputStream)
+      {
+        if (!((FileBackedBoundedByteArrayOutputStream)(this.out)).hasOverflowed())
+              return true;
+        else
+          return false;
+      }
+      else
+        return false;
     }
 
 
@@ -275,9 +285,83 @@ public class IFile {
         valueSerializer.close();
       }
 
-      /*??? handle the close in dataViaEvent case */
+        // write V_END_MARKER as needed
+        writeValueMarker(out);
+
+
+        // Write EOF_MARKER for key/value length
+        WritableUtils.writeVInt(out, EOF_MARKER);
+        WritableUtils.writeVInt(out, EOF_MARKER);
+        decompressedBytesWritten += 2 * WritableUtils.getVIntSize(EOF_MARKER);
+        //account for header bytes
+        decompressedBytesWritten += HEADER.length;
+
+
+        // Close the underlying stream iff we own it...
+        if (ownOutputStream) {
+          out.close();
+        } else {
+            if (!(out instanceof FileBackedBoundedByteArrayOutputStream)) {
+              if (compressOutput) {
+                // Flush
+                compressedOut.finish();
+                compressedOut.resetState();
+              }
+              // Write the checksum and flush the buffer
+              checksumOut.finish();
+            }
+        }
+
+        //header bytes are already included in rawOut
+        if( out instanceof FileBackedBoundedByteArrayOutputStream)
+        {
+          ((FileBackedBoundedByteArrayOutputStream) out).getCompressedBytesWritten();
+        }
+        else
+          compressedBytesWritten = rawOut.getPos() - start;
+
+        if (compressOutput) {
+          // Return back the compressor
+          CodecPool.returnCompressor(compressor);
+          compressor = null;
+        }
+
+        out = null;
+
+        if (writtenRecordsCounter != null) {
+          writtenRecordsCounter.increment(numRecordsWritten);
+        }
+
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Total keys written=" + numRecordsWritten + "; rleEnabled=" + rle + "; Savings" +
+                  "(due to multi-kv/rle)=" + totalKeySaving + "; number of RLEs written=" +
+                  rleWritten + "; compressedLen=" + compressedBytesWritten + "; rawLen="
+                  + decompressedBytesWritten);
+        }
+
+    }
+
+
+
+
+    /*
+    public void close() throws IOException {
+      if (closed.getAndSet(true)) {
+        throw new IOException("Writer was already closed earlier");
+      }
+
+      // When IFile writer is created by BackupStore, we do not have
+      // Key and Value classes set. So, check before closing the
+      // serializers
+      if (closeSerializers) {
+        keySerializer.close();
+        valueSerializer.close();
+      }
+
+
       if(!this.hasOverflowed) {
-        /* the case using in memory buffer */
+        //if((out instanceof FileBackedBoundedByteArrayOutputStream) && (!((FileBackedBoundedByteArrayOutputStream)out).hasOverflowed()){
+
         if (ownOutputStream) {
           out.close();
         } else {
@@ -304,35 +388,35 @@ public class IFile {
         if (ownOutputStream) {
           out.close();
         } else {
-            if(out instanceof FileBackedBoundedByteArrayOutputStream)
-            {
-              boolean compressOutputTmp = ((FileBackedBoundedByteArrayOutputStream)out).getCompressOutput();
-              if (compressOutputTmp) {
-                CompressionOutputStream compressedOutTmp = ((FileBackedBoundedByteArrayOutputStream) out).getCompressedOut();
-                compressedOutTmp.finish();
-                compressedOutTmp.resetState();
-              }
-              ((FileBackedBoundedByteArrayOutputStream)out).getChecksumOut().finish();
-
-              //header bytes are already included in rawOut  //???
-              compressedBytesWritten =
-                      ((FileBackedBoundedByteArrayOutputStream) out).getRawOut().getPos() -
-                              ((FileBackedBoundedByteArrayOutputStream) out).getStart();
-            }else
-            {
-              if(compressOutput) {
-                // Flush
-                compressedOut.finish();
-                compressedOut.resetState();
-              }
-              // Write the checksum and flush the buffer
-              checksumOut.finish();
-
-              //header bytes are already included in rawOut  //???
-              compressedBytesWritten = rawOut.getPos() - start;
-
+          if(out instanceof FileBackedBoundedByteArrayOutputStream)
+          {
+            boolean compressOutputTmp = ((FileBackedBoundedByteArrayOutputStream)out).getCompressOutput();
+            if (compressOutputTmp) {
+              CompressionOutputStream compressedOutTmp = ((FileBackedBoundedByteArrayOutputStream) out).getCompressedOut();
+              compressedOutTmp.finish();
+              compressedOutTmp.resetState();
             }
+            ((FileBackedBoundedByteArrayOutputStream)out).getChecksumOut().finish();
+
+            //header bytes are already included in rawOut  //???
+            compressedBytesWritten =
+                    ((FileBackedBoundedByteArrayOutputStream) out).getRawOut().getPos() -
+                            ((FileBackedBoundedByteArrayOutputStream) out).getStart();
+          }else
+          {
+            if(compressOutput) {
+              // Flush
+              compressedOut.finish();
+              compressedOut.resetState();
+            }
+            // Write the checksum and flush the buffer
+            checksumOut.finish();
+
+            //header bytes are already included in rawOut  //???
+            compressedBytesWritten = rawOut.getPos() - start;
+
           }
+        }
 
         //header bytes are already included in rawOut  //???
         compressedBytesWritten = rawOut.getPos() - start;
@@ -357,6 +441,10 @@ public class IFile {
       }
 
     }
+    */
+
+
+
 
     /**
      * Send key/value to be appended to IFile. To represent same key as previous
@@ -574,7 +662,8 @@ public class IFile {
 
     public long getRawLength() {
       if (out instanceof FileBackedBoundedByteArrayOutputStream) {
-        return ((FileBackedBoundedByteArrayOutputStream) out).memStream.size();
+        //return ((FileBackedBoundedByteArrayOutputStream) out).memStream.size();
+        return ((FileBackedBoundedByteArrayOutputStream) out).out.size();
       } else {
         return decompressedBytesWritten;
       }
@@ -585,7 +674,8 @@ public class IFile {
 
       if(out instanceof FileBackedBoundedByteArrayOutputStream)
       {
-        return ((FileBackedBoundedByteArrayOutputStream) out).memStream.size();
+        //return ((FileBackedBoundedByteArrayOutputStream) out).memStream.size();
+        return ((FileBackedBoundedByteArrayOutputStream) out).out.size();
       }
       else
       {
