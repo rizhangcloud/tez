@@ -17,12 +17,7 @@
  */
 package org.apache.tez.runtime.library.common.sort.impl;
 
-import java.io.DataInput;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -230,10 +225,10 @@ public class IFile {
       this.rle = rle;
 
       //this.out=new FileBackedBoundedByteArrayOutputStream(this.compressedOut, null, file, codec, rle);
-      BoundedByteArrayOutputStream memStream = new BoundedByteArrayOutputStream(512);
+      ByteArrayOutputStream memStream = new ByteArrayOutputStream(512);
       //this.out = new FileBackedBoundedByteArrayOutputStream(null, null, rfs, file, codec, rle);
 
-      this.out = new FileBackedBoundedByteArrayOutputStream(memStream, null, rfs, file, codec, rle);
+      this.out = new FileBackedBoundedByteArrayOutputStream(memStream, null, rfs, file, codec, rle, 512);
 
       //this.hasOverflowed = ((FileBackedBoundedByteArrayOutputStream) this.out).hasOverflowed();
 
