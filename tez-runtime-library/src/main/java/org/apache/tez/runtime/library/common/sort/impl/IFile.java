@@ -125,6 +125,9 @@ public class IFile {
     // de-dup keys or not
     protected final boolean rle;
 
+    // store the data going to place in payload
+    byte[] tmpDataBuffer;
+
 
     /* Note: the original first Writer constructor which creates file */
 
@@ -325,6 +328,18 @@ public class IFile {
           CodecPool.returnCompressor(compressor);
           compressor = null;
         }
+
+          /* store the data to be placed in event payload */
+        if( out instanceof FileBackedBoundedByteArrayOutputStream)
+        {
+           this.tmpDataBuffer  =
+                   new byte[((FileBackedBoundedByteArrayOutputStream) this.getOutputStream()).getBuffer().length];
+          System.arraycopy(((FileBackedBoundedByteArrayOutputStream) this.getOutputStream()).getBuffer(),
+                  0, tmpDataBuffer, 0,
+                  ((FileBackedBoundedByteArrayOutputStream) this.getOutputStream()).getBuffer().length);
+
+        }
+
 
         out = null;
 
@@ -663,7 +678,7 @@ public class IFile {
     public long getRawLength() {
       if (out instanceof FileBackedBoundedByteArrayOutputStream) {
         //return ((FileBackedBoundedByteArrayOutputStream) out).memStream.size();
-        return ((FileBackedBoundedByteArrayOutputStream) out).out.size();
+        return ((FileBackedBoundedByteArrayOutputStream) out).size();
       } else {
         return decompressedBytesWritten;
       }
@@ -675,12 +690,16 @@ public class IFile {
       if(out instanceof FileBackedBoundedByteArrayOutputStream)
       {
         //return ((FileBackedBoundedByteArrayOutputStream) out).memStream.size();
-        return ((FileBackedBoundedByteArrayOutputStream) out).out.size();
+        return ((FileBackedBoundedByteArrayOutputStream) out).size();
       }
       else
       {
         return compressedBytesWritten;
       }
+    }
+
+    public byte[] getTmpDataBuffer() {
+      return tmpDataBuffer;
     }
 
     /* ??? originally implemented in FileBasedKVWriter. To enable dataViaEvent, add it back */

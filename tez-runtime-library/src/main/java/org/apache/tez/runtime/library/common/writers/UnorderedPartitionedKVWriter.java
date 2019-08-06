@@ -712,11 +712,14 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
   public List<Event> close() throws IOException, InterruptedException {
 
     inMemBuffer = writer.InMemBuffer();
+
+    /*
     byte[] tmpBuffer =
             new byte[((FileBackedBoundedByteArrayOutputStream) writer.getOutputStream()).getBuffer().length];
     System.arraycopy(((FileBackedBoundedByteArrayOutputStream) writer.getOutputStream()).getBuffer(),
             0, tmpBuffer, 0,
             ((FileBackedBoundedByteArrayOutputStream) writer.getOutputStream()).getBuffer().length);
+     */
 
     // In case there are buffers to be spilled, schedule spilling
     scheduleSpill(true);
@@ -799,7 +802,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
             //??? lastSpill must be true
             eventList.add(generateDMEvent2(false, -1, true,
                     outputContext.getUniqueIdentifier(), emptyPartitions,
-                    tmpBuffer));
+                    writer.getTmpDataBuffer()));
           }
 
           return eventList;

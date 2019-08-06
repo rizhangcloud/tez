@@ -68,7 +68,7 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
 
     //BoundedByteArrayOutputStream memStream;
     //FSDataOutputStream out;
-    BoundedByteArrayOutputStream out;
+    private BoundedByteArrayOutputStream out;
 
     private FSDataOutputStream internalBuffer;
 
@@ -97,6 +97,14 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
 
     private int bufferSize = 0;
 
+    private int currentPointer;
+    private int written;
+    private int startOffset;
+
+    private byte[] singleByte = new byte[1];
+
+    private byte[] bytearr = null;
+
 
     public FileBackedBoundedByteArrayOutputStream(BoundedByteArrayOutputStream out, FileSystem.Statistics stats, FileSystem rfs,
                                                   Path file, CompressionCodec codec, boolean rle) {
@@ -118,19 +126,23 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
                 compressOutput = true;
             }
         }
+        written = 0;
     }
 
+    /*
     public void write(int off) throws IOException {
         write(ByteBuffer.allocate(4).putInt(off).array(), (int) this.rawOut.getPos(), 4);
     }
+     */
 
     @Override
-    public void write(byte[] b, int off, int len) throws IOException {
+    public synchronized void write(byte[] b, int off, int len) throws IOException {
         if (bufferIsFull) {
             outputStream.write(b, off, len);
         } else {
             if (out.available() > len) {
                 out.write(b, off, len);
+                written += len;
                 return;
             } else {
                 outputStream = fs.create(file);
@@ -142,9 +154,11 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
                     this.compressedOut = codec.createOutputStream(this.checksumOut, this.compressor);
                     this.outputStream = new FSDataOutputStream(this.compressedOut, null);
                     this.compressOutput = true;
+                    written += this.rawOut.getPos() - written;
                 } else {
                     LOG.warn("Could not obtain compressor from CodecPool");
                     this.outputStream = new FSDataOutputStream(checksumOut, null);
+                    written += len;
                 }
             }
 
@@ -156,6 +170,31 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
         }
     }
 
+    @Override
+    public synchronized void write(int b) throws IOException {
+            /* from the API, only 1 byte is written */
+            singleByte[0] = (byte)b;
+            write(singleByte, 0, singleByte.length);
+
+            //write(ByteBuffer.allocate(1).putInt(b).array(), written, ByteBuffer.allocate(4).putInt(b).capacity());
+
+            /*
+            if(totalBytes < out.getBuffer().length)
+            {
+                write(ByteBuffer.allocate(4).putInt(b).array(), totalBytes, ByteBuffer.allocate(4).putInt(b).capacity());
+                //totalBytes += ByteBuffer.allocate(4).putInt(b).capacity();
+            }
+            else
+            {
+                outputStream.write(b);
+                totalBytes += ByteBuffer.allocate(4).putInt(b).capacity();
+                //not compress yet
+
+            }
+            */
+    }
+
+    @Override
     public void close() throws IOException {
         if (!bufferIsFull)
             this.out.close();
@@ -238,5 +277,94 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
         this.codec = codec;
         this.rle = rle;
     }
+
+    /* start implement */
+
+
+
+    /**
+     * Writes a string to the specified DataOutput using
+     * <a href="DataInput.html#modified-utf-8">modified UTF-8</a>
+     * encoding in a machine-independent manner.
+     * <p>
+     * First, two bytes are written to out as if by the <code>writeShort</code>
+     * method giving the number of bytes to follow. This value is the number of
+     * bytes actually written out, not the length of the string. Following the
+     * length, each character of the string is output, in sequence, using the
+     * modified UTF-8 encoding for the character. If no exception is thrown, the
+     * counter <code>written</code> is incremented by the total number of
+     * bytes written to the output stream. This will be at least two
+     * plus the length of <code>str</code>, and at most two plus
+     * thrice the length of <code>str</code>.
+     *
+     * @param      str   a string to be written.
+     * @param      out   destination to write to
+     * @return     The number of bytes written out.
+     * @exception  IOException  if an I/O error occurs.
+     */
+    static int writeUTF(String str, DataOutput out) throws IOException {
+        int strlen = str.length();
+        int utflen = 0;
+        int c, count = 0;
+
+        /* use charAt instead of copying String to char array */
+        for (int i = 0; i < strlen; i++) {
+            c = str.charAt(i);
+            if ((c >= 0x0001) && (c <= 0x007F)) {
+                utflen++;
+            } else if (c > 0x07FF) {
+                utflen += 3;
+            } else {
+                utflen += 2;
+            }
+        }
+
+        if (utflen > 65535)
+            throw new UTFDataFormatException(
+                    "encoded string too long: " + utflen + " bytes");
+
+        byte[] bytearr = null;
+        if (out instanceof FileBackedBoundedByteArrayOutputStream) {
+            FileBackedBoundedByteArrayOutputStream dos = (FileBackedBoundedByteArrayOutputStream)out;
+            if(dos.bytearr == null || (dos.bytearr.length < (utflen+2)))
+                dos.bytearr = new byte[(utflen*2) + 2];
+            bytearr = dos.bytearr;
+        } else {
+            bytearr = new byte[utflen+2];
+        }
+
+        bytearr[count++] = (byte) ((utflen >>> 8) & 0xFF);
+        bytearr[count++] = (byte) ((utflen >>> 0) & 0xFF);
+
+        int i=0;
+        for (i=0; i<strlen; i++) {
+            c = str.charAt(i);
+            if (!((c >= 0x0001) && (c <= 0x007F))) break;
+            bytearr[count++] = (byte) c;
+        }
+
+        for (;i < strlen; i++){
+            c = str.charAt(i);
+            if ((c >= 0x0001) && (c <= 0x007F)) {
+                bytearr[count++] = (byte) c;
+
+            } else if (c > 0x07FF) {
+                bytearr[count++] = (byte) (0xE0 | ((c >> 12) & 0x0F));
+                bytearr[count++] = (byte) (0x80 | ((c >>  6) & 0x3F));
+                bytearr[count++] = (byte) (0x80 | ((c >>  0) & 0x3F));
+            } else {
+                bytearr[count++] = (byte) (0xC0 | ((c >>  6) & 0x1F));
+                bytearr[count++] = (byte) (0x80 | ((c >>  0) & 0x3F));
+            }
+        }
+        out.write(bytearr, 0, utflen+2);
+        return utflen + 2;
+    }
+
+
+
+    /* end implement */
+
+
 
 }

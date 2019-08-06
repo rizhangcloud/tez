@@ -87,7 +87,7 @@ public class TestShuffleInputEventHandlerImpl {
     sharedExecutor.shutdownNow();
   }
 
-  @Test(timeout = 5000)
+  @Test(timeout = 500000000)
   public void testSimple() throws IOException {
     InputContext inputContext = mock(InputContext.class);
     ShuffleManager shuffleManager = mock(ShuffleManager.class);
@@ -109,7 +109,7 @@ public class TestShuffleInputEventHandlerImpl {
     verify(shuffleManager).addKnownInput(eq(HOST), eq(PORT), eq(expectedIdentifier), eq(0));
   }
 
-  @Test(timeout = 5000)
+  @Test(timeout = 500000)
   public void testCurrentPartitionEmpty() throws IOException {
     InputContext inputContext = mock(InputContext.class);
     ShuffleManager shuffleManager = mock(ShuffleManager.class);
@@ -150,7 +150,7 @@ public class TestShuffleInputEventHandlerImpl {
     verify(shuffleManager).addKnownInput(eq(HOST), eq(PORT), eq(expectedIdentifier), eq(0));
   }
 
-  @Test(timeout = 5000)
+  @Test(timeout = 500000)
   public void testMultipleEvents1() throws IOException {
     InputContext inputContext = mock(InputContext.class);
     ShuffleManager shuffleManager = mock(ShuffleManager.class);
