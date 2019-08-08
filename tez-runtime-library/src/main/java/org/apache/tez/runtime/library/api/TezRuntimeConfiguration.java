@@ -488,7 +488,7 @@ public class TezRuntimeConfiguration {
   public static final String TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_ENABLED =
           TEZ_RUNTIME_PREFIX + "transfer.data-via-events.enabled";
   @Private
-  public static final boolean TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_ENABLED_DEFAULT = false;
+  public static final boolean TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_ENABLED_DEFAULT = true;
 
   @Private
   public static final String TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_MAX_SIZE =
@@ -532,7 +532,6 @@ public class TezRuntimeConfiguration {
   public static final String  TEZ_RUNTIME_SHUFFLE_BATCH_WAIT =
       TEZ_RUNTIME_PREFIX + "shuffle.batch.wait";
   public static final int TEZ_RUNTIME_SHUFFLE_BATCH_WAIT_DEFAULT = -1;
-
 
   /**
    * Share data fetched between tasks running on the same host if applicable
@@ -631,6 +630,8 @@ public class TezRuntimeConfiguration {
     tezRuntimeKeys.add(TEZ_RUNTIME_EMPTY_PARTITION_INFO_VIA_EVENTS_ENABLED);
     tezRuntimeKeys.add(TEZ_RUNTIME_PIPELINED_SHUFFLE_ENABLED);
     tezRuntimeKeys.add(TEZ_RUNTIME_ENABLE_FINAL_MERGE_IN_OUTPUT);
+    tezRuntimeKeys.add(TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_ENABLED);
+    tezRuntimeKeys.add(TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_MAX_SIZE);
     tezRuntimeKeys.add(TEZ_RUNTIME_RECORDS_BEFORE_PROGRESS);
     tezRuntimeKeys.add(TEZ_RUNTIME_OPTIMIZE_LOCAL_FETCH);
     tezRuntimeKeys.add(TEZ_RUNTIME_OPTIMIZE_SHARED_FETCH);

@@ -199,6 +199,13 @@ public class TestDataViaEvent {
         this.reportPartitionStats = reportPartitionStats;
     }
 
+
+    @Test(timeout = 1000000)
+    public void testNoSpill_SinglePartition() throws IOException, InterruptedException {
+        baseTest(10, 1, null, shouldCompress, -1, 0);
+    }
+
+
     @SuppressWarnings("deprecation")
     @Parameterized.Parameters(name = "test[{0}, {1}]")
     public static Collection<Object[]> data() {
@@ -228,12 +235,6 @@ public class TestDataViaEvent {
     public void cleanup() throws IOException {
         LOG.info("CleanUp");
         localFs.delete(TEST_ROOT_DIR, true);
-    }
-
-
-    @Test(timeout = 1000000)
-    public void testNoSpill_SinglePartition() throws IOException, InterruptedException {
-        baseTest(100, 1, null, shouldCompress, -1, 0);
     }
 
 
@@ -329,7 +330,9 @@ public class TestDataViaEvent {
                 TezRuntimeConfiguration.TEZ_RUNTIME_UNORDERED_PARTITIONED_KVWRITER_BUFFER_MERGE_PERCENT,
                 bufferMergePercent);
 
-        /* start declarations for test DataViaEvent */
+        conf.setBoolean(TezRuntimeConfiguration.TEZ_RUNTIME_PIPELINED_SHUFFLE_ENABLED, true);
+
+        /* start declarations for test DataViaEvent handler */
 
         InputContext inputContext = mock(InputContext.class);
         ShuffleManager shuffleManager = mock(ShuffleManager.class);

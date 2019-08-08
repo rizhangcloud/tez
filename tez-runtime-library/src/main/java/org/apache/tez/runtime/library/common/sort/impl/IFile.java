@@ -136,21 +136,7 @@ public class IFile {
       ownOutputStream = true;
     }
 
-    /* Note: the new first Writer constructor which does not create file. */
-    /*
-    public Writer(Configuration conf, FileSystem fs, Path file,
-                  Class keyClass, Class valueClass,
-                  CompressionCodec codec,
-                  TezCounter writesCounter,
-                  TezCounter serializedBytesCounter) throws IOException {
-      this(conf, fs, file, keyClass, valueClass, codec,
-              writesCounter, serializedBytesCounter, false);
-
-      ownOutputStream = true;
-    }
-     */
-
-    /* Note: the second Writer constructor */
+     /* Note: the second Writer constructor */
     protected Writer(TezCounter writesCounter, TezCounter serializedBytesCounter, boolean rle) {
       writtenRecordsCounter = writesCounter;
       serializedUncompressedBytes = serializedBytesCounter;
@@ -350,7 +336,6 @@ public class IFile {
         }
 
     }
-
 
 
 

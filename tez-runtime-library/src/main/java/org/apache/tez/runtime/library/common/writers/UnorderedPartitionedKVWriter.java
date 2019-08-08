@@ -61,6 +61,7 @@ import org.apache.tez.runtime.api.Event;
 import org.apache.tez.runtime.api.TaskFailureType;
 import org.apache.tez.runtime.api.OutputContext;
 import org.apache.tez.runtime.api.events.CompositeDataMovementEvent;
+import org.apache.tez.runtime.api.events.DataMovementEvent;
 import org.apache.tez.runtime.library.api.IOInterruptedException;
 import org.apache.tez.runtime.library.api.TezRuntimeConfiguration.ReportPartitionStats;
 import org.apache.tez.runtime.library.api.TezRuntimeConfiguration;
@@ -134,8 +135,11 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
   private final long[] sizePerPartition;
   private volatile long spilledSize = 0;
 
-  private boolean closed = false;
   private boolean inMemBuffer = false;
+
+  private boolean dataViaEventsEnabled;
+  private int dataViaEventsMaxSize;
+
 
   static final ThreadLocal<Deflater> deflater = new ThreadLocal<Deflater>() {
 
@@ -219,6 +223,18 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
     this.pipelinedShuffle = pipelinedShuffleConf && !isFinalMergeEnabled;
     this.finalEvents = Lists.newLinkedList();
 
+    this.dataViaEventsEnabled = conf.getBoolean(
+            TezRuntimeConfiguration.TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_ENABLED,
+            TezRuntimeConfiguration.TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_ENABLED_DEFAULT);
+
+    this.dataViaEventsMaxSize = conf.getInt(
+            TezRuntimeConfiguration.TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_MAX_SIZE,
+            TezRuntimeConfiguration.TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_MAX_SIZE_DEFAULT);
+
+    LOG.info(this.getClass().getSimpleName() + " running with params -> "
+            + "dataViaEventsEnabled: " + dataViaEventsEnabled
+            + ", dataViaEventsMaxSize: " + dataViaEventsMaxSize);
+
     if (availableMemoryBytes == 0) {
       Preconditions.checkArgument(((numPartitions == 1) && !pipelinedShuffle), "availableMemory "
           + "can be set to 0 only when numPartitions=1 and " + TezRuntimeConfiguration
@@ -288,20 +304,20 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
       finalIndexPath = outputFileHandler.getOutputIndexFileForWrite(indexFileSizeEstimate);
       skipBuffers = true;
 
-      /*??? the entrance to the dataViaEvent feature*/
-      /*
-      writer = new IFile.Writer(conf, rfs, finalOutPath, keyClass, valClass,
-            codec, outputRecordsCounter, outputRecordBytesCounter);
-       */
-
-      /*
-      writer = new BoundedByteArrayWriter(conf, rfs, finalOutPath, keyClass, valClass,
+      //if (dataViaEventsEnabled && outputGenerated && this.kvWriter.getCompressedLength() <= dataViaEventsMaxSize) {
+      //if (dataViaEventsEnabled && this.kvWriter.getCompressedLength() <= dataViaEventsMaxSize) {
+      if (dataViaEventsEnabled) {
+        /*??? the entrance to the dataViaEvent feature*/
+        writer = new Writer(conf, rfs, finalOutPath, keyClass, valClass,
+                codec, outputRecordsCounter, outputRecordBytesCounter, false, true);
+        /* writer = new BoundedByteArrayWriter(conf, rfs, finalOutPath, keyClass, valClass,
               codec, outputRecordsCounter, outputRecordBytesCounter, false);
-       */
-
-      writer = new  Writer(conf,  rfs, finalOutPath, keyClass, valClass,
-              codec, outputRecordsCounter, outputRecordBytesCounter, false, true );
-
+        */
+      }
+      else {
+        writer = new IFile.Writer(conf, rfs, finalOutPath, keyClass, valClass,
+            codec, outputRecordsCounter, outputRecordBytesCounter);
+      }
 
       if ((!SPILL_FILE_PERMS.equals(SPILL_FILE_PERMS.applyUMask(FsPermission.getUMask(conf))))
         &&(rfs.exists(finalOutPath))) {
@@ -711,16 +727,6 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
   @Override
   public List<Event> close() throws IOException, InterruptedException {
 
-    inMemBuffer = writer.InMemBuffer();
-
-    /*
-    byte[] tmpBuffer =
-            new byte[((FileBackedBoundedByteArrayOutputStream) writer.getOutputStream()).getBuffer().length];
-    System.arraycopy(((FileBackedBoundedByteArrayOutputStream) writer.getOutputStream()).getBuffer(),
-            0, tmpBuffer, 0,
-            ((FileBackedBoundedByteArrayOutputStream) writer.getOutputStream()).getBuffer().length);
-     */
-
     // In case there are buffers to be spilled, schedule spilling
     scheduleSpill(true);
     List<Event> eventList = Lists.newLinkedList();
@@ -755,6 +761,8 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
       List<Event> events = Lists.newLinkedList();
       if (!pipelinedShuffle) {
         if (skipBuffers) {
+          inMemBuffer = writer.InMemBuffer();
+
           writer.close();
           long rawLen = writer.getRawLength();
           long compLen = writer.getCompressedLength();
@@ -951,7 +959,12 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
       // Populate payload only if at least 1 partition has data
       payloadBuilder.setHost(host);
       payloadBuilder.setPort(getShufflePort());
+
+      // payloadBuilder.setPathComponent(pathComponent);
+
       payloadBuilder.setPathComponent(pathComponent);
+
+      //payloadBuilder.setPathComponent(getContext().getUniqueIdentifier());
     }
 
 
@@ -972,7 +985,16 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
     /* end */
 
     ByteBuffer payload = payloadBuilder.build().toByteString().asReadOnlyByteBuffer();
+
+    /* ??? necessary */
+    payloadBuilder.setPathComponent("attempttmp");
+
+
+    //DataMovementEvent dmEvent = DataMovementEvent.create(0, payload);
+    //return dmEvent;
+
     return CompositeDataMovementEvent.create(0, numPartitions, payload);
+
   }
 
 
