@@ -471,6 +471,7 @@ public class TestDataViaEvent {
 
             CompositeInputAttemptIdentifier expectedIdentifier = new CompositeInputAttemptIdentifier(taskIndex, 0,
                     PATH_COMPONENT, 1);
+            /* ??? make sure these functions got running */
             //verify(shuffleManager).addKnownInput(eq(HOST_STRING), eq(SHUFFLE_PORT), eq(expectedIdentifier), eq(0));
             //verify(shuffleManager).addCompletedInputWithData(eq(expectedIdentifier), eq(fetchedInput));
                     }

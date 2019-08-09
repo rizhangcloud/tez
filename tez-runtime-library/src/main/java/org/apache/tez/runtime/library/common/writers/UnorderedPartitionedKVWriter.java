@@ -767,14 +767,15 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
           long rawLen = writer.getRawLength();
           long compLen = writer.getCompressedLength();
 
-          /*??? RZ: Tez-475 */
+          /*???  dataViaEvent will not generate the index record */
+          /*??? the condition */
           //if ((writer).hasSpilled())
-          //{
+          if (!inMemBuffer) {
             TezIndexRecord rec = new TezIndexRecord(0, rawLen, compLen);
             TezSpillRecord sr = new TezSpillRecord(1);
             sr.putIndex(rec, 0);
             sr.writeToFile(finalIndexPath, conf);
-          //}
+          }
 
           BitSet emptyPartitions = new BitSet();
           if (outputRecordsCounter.getValue() == 0) {
@@ -945,53 +946,18 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
 
     //assertTrue(isLastSpill); //??? necessary?
 
-    String host = getHost();
-    if (emptyPartitions.cardinality() != 0) {
-      // Empty partitions exist
-      ByteString emptyPartitionsByteString =
-              TezCommonUtils.compressByteArrayToByteString(TezUtilsInternal.toByteArray
-                      (emptyPartitions), deflater.get());
-      payloadBuilder.setEmptyPartitions(emptyPartitionsByteString);
-    }
-
-
-    if (emptyPartitions.cardinality() != numPartitions) {
-      // Populate payload only if at least 1 partition has data
-      payloadBuilder.setHost(host);
-      payloadBuilder.setPort(getShufflePort());
-
-      // payloadBuilder.setPathComponent(pathComponent);
-
-      payloadBuilder.setPathComponent(pathComponent);
-
-      //payloadBuilder.setPathComponent(getContext().getUniqueIdentifier());
-    }
-
-
-    if (addSpillDetails) {
-      payloadBuilder.setSpillId(spillId);
-      payloadBuilder.setLastEvent(isLastSpill);
-    }
-
-    /* start creating a DataProto and setting data */
+      /* start creating a DataProto and setting data */
     LOG.info("Serialzing actual data into DataMovementEvent, dataSize: " + this.writer.getCompressedLength());
     ShuffleUserPayloads.DataProto.Builder dataProtoBuilder = ShuffleUserPayloads.DataProto.newBuilder();
     dataProtoBuilder.setData(ByteString.copyFrom(data));
     dataProtoBuilder.setRawLength((int) this.writer.getRawLength());
 
-    //can not send compressed data ???
+    /*dataViaEvent needs not the compressed data. so the compressed length should be equal to the decompressed length.*/
     dataProtoBuilder.setCompressedLength((int) this.writer.getCompressedLength());
     payloadBuilder.setData(dataProtoBuilder.build());
     /* end */
 
     ByteBuffer payload = payloadBuilder.build().toByteString().asReadOnlyByteBuffer();
-
-    /* ??? necessary */
-    payloadBuilder.setPathComponent("attempttmp");
-
-
-    //DataMovementEvent dmEvent = DataMovementEvent.create(0, payload);
-    //return dmEvent;
 
     return CompositeDataMovementEvent.create(0, numPartitions, payload);
 
