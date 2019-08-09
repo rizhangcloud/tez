@@ -469,10 +469,11 @@ public class TestDataViaEvent {
         for (int i = 0; i < cdme.getCount(); i++) {
             handler.handleEvents(Collections.singletonList(cdme.getEvents().iterator().next()));
 
-            //CompositeInputAttemptIdentifier expectedIdentifier = new CompositeInputAttemptIdentifier(taskIndex, 0,
-                    // PATH_COMPONENT, 1);
+            CompositeInputAttemptIdentifier expectedIdentifier = new CompositeInputAttemptIdentifier(taskIndex, 0,
+                    PATH_COMPONENT, 1);
             //verify(shuffleManager).addKnownInput(eq(HOST_STRING), eq(SHUFFLE_PORT), eq(expectedIdentifier), eq(0));
-        }
+            //verify(shuffleManager).addCompletedInputWithData(eq(expectedIdentifier), eq(fetchedInput));
+                    }
         /* end verify event handler */
 
 

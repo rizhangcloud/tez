@@ -1295,7 +1295,7 @@ public class TestUnorderedPartitionedKVWriter {
       }
       InputStream inStream;
       if (isInMem) {
-        inStream = new ByteArrayInputStream(eventProto.getData().toByteArray());
+        inStream = new ByteArrayInputStream(eventProto.getData().getData().toByteArray());
       } else
       {
         FSDataInputStream  tmpStream = FileSystem.getLocal(conf).open(outputFilePath);
