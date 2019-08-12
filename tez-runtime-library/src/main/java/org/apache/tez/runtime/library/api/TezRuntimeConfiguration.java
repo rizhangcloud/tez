@@ -494,7 +494,8 @@ public class TezRuntimeConfiguration {
   public static final String TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_MAX_SIZE =
           TEZ_RUNTIME_PREFIX + "transfer.data-via-events.max-size";
   @Private
-  public static final int TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_MAX_SIZE_DEFAULT = 200 << 10; // 200KB
+  public static final int TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_MAX_SIZE_DEFAULT = 512; // 512B
+  //public static final int TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_MAX_SIZE_DEFAULT = 200 << 10; // 200KB
 
   /**
    * If the shuffle input is on the local host bypass the http fetch and access the files directly

@@ -152,6 +152,7 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
                 this.checksumOut = new IFileOutputStream(outputStream);
                 this.start = this.rawOut.getPos();
 
+                /* ??? no compression in in memory case. CompressOutput true always? */
                 if (compressOutput) {
                     this.compressedOut = codec.createOutputStream(this.checksumOut, this.compressor);
                     this.outputStream = new FSDataOutputStream(this.compressedOut, null);
@@ -163,8 +164,6 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
                     written += len;
                 }
             }
-
-            //writeHeader(this.outputStream);  //??? necessary
 
             outputStream.write(this.out.toByteArray());
             this.out.close();

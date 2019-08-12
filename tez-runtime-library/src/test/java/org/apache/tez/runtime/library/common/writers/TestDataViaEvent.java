@@ -474,6 +474,7 @@ public class TestDataViaEvent {
             /* ??? make sure these functions got running */
             //verify(shuffleManager).addKnownInput(eq(HOST_STRING), eq(SHUFFLE_PORT), eq(expectedIdentifier), eq(0));
             //verify(shuffleManager).addCompletedInputWithData(eq(expectedIdentifier), eq(fetchedInput));
+            //moveDataToFetchedInput
                     }
         /* end verify event handler */
 
@@ -548,8 +549,10 @@ public class TestDataViaEvent {
                 continue;
             }
             InputStream inStream;
+
             if (isInMem) {
-                inStream = new ByteArrayInputStream(eventProto.getData().toByteArray());
+                /* ??? should be getData().getData() */
+                inStream = new ByteArrayInputStream(eventProto.getData().getData().toByteArray());
             } else
             {
                 FSDataInputStream  tmpStream = FileSystem.getLocal(conf).open(outputFilePath);

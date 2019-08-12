@@ -121,7 +121,6 @@ public class TestUnorderedPartitionedKVWriter {
   private boolean shouldCompress;
   private ReportPartitionStats reportPartitionStats;
   private Configuration defaultConf = new Configuration();
-
   public TestUnorderedPartitionedKVWriter(boolean shouldCompress,
       ReportPartitionStats reportPartitionStats) {
     this.shouldCompress = shouldCompress;
@@ -901,6 +900,7 @@ public class TestUnorderedPartitionedKVWriter {
     conf.setBoolean(TezRuntimeConfiguration
         .TEZ_RUNTIME_PIPELINED_SHUFFLE_ENABLED, false);
 
+
     CompressionCodec codec = null;
     if (shouldCompress) {
       codec = new DefaultCodec();
@@ -1115,6 +1115,10 @@ public class TestUnorderedPartitionedKVWriter {
     conf.setInt(
         TezRuntimeConfiguration.TEZ_RUNTIME_UNORDERED_PARTITIONED_KVWRITER_BUFFER_MERGE_PERCENT,
         bufferMergePercent);
+    boolean dataViaEventEnabled = conf.getBoolean(
+            TezRuntimeConfiguration.TEZ_RUNTIME_EMPTY_PARTITION_INFO_VIA_EVENTS_ENABLED,
+            TezRuntimeConfiguration.TEZ_RUNTIME_EMPTY_PARTITION_INFO_VIA_EVENTS_ENABLED_DEFAULT);
+
 
     CompressionCodec codec = null;
     if (shouldCompress) {
@@ -1188,7 +1192,8 @@ public class TestUnorderedPartitionedKVWriter {
     long fileOutputBytes = fileOutputBytesCounter.getValue();
     if (numRecordsWritten > 0) {
       assertTrue(fileOutputBytes > 0);
-      if (!shouldCompress) {
+
+      if ((!shouldCompress) && (!dataViaEventEnabled)) {
         assertTrue(fileOutputBytes > outputRecordBytesCounter.getValue());
       }
     } else {
@@ -1261,65 +1266,107 @@ public class TestUnorderedPartitionedKVWriter {
       return;
     }
 
-    boolean isInMem =false;
-    isInMem= eventProto.hasData();
+    boolean isInMem= eventProto.getData().hasData();
 
-    assertTrue(localFs.exists(outputFilePath)||isInMem);
-    assertTrue(localFs.exists(spillFilePath)||isInMem);
-    //Todo: change the assertion
-    /*
-    assertEquals("Incorrect output permissions", (short)0640,
-        localFs.getFileStatus(outputFilePath).getPermission().toShort());
-    assertEquals("Incorrect index permissions", (short)0640,
-        localFs.getFileStatus(spillFilePath).getPermission().toShort());
-     */
-    // verify no intermediate spill files have been left around
-    synchronized (kvWriter.spillInfoList) {
-      for (SpillInfo spill : kvWriter.spillInfoList) {
-        assertFalse("lingering intermediate spill file " + spill.outPath,
-            localFs.exists(spill.outPath));
-      }
-    }
+    /* dataViaEvent is not enabled */
+    if( !isInMem ) {
+      assertTrue(localFs.exists(outputFilePath));
+      assertTrue(localFs.exists(spillFilePath));
+      //Todo: change the assertion
 
-    // Special case for 0 records.
-    TezSpillRecord spillRecord = new TezSpillRecord(spillFilePath, conf);
-    DataInputBuffer keyBuffer = new DataInputBuffer();
-    DataInputBuffer valBuffer = new DataInputBuffer();
-    IntWritable keyDeser = new IntWritable();
-    LongWritable valDeser = new LongWritable();
-    for (int i = 0; i < numOutputs; i++) {
-      TezIndexRecord indexRecord = spillRecord.getIndex(i);
-      if (skippedPartitions != null && skippedPartitions.contains(i)) {
-        assertFalse("The Index Record for partition " + i + " should not have any data", indexRecord.hasData());
-        continue;
+      assertEquals("Incorrect output permissions", (short) 0640,
+              localFs.getFileStatus(outputFilePath).getPermission().toShort());
+      assertEquals("Incorrect index permissions", (short) 0640,
+              localFs.getFileStatus(spillFilePath).getPermission().toShort());
+
+      // verify no intermediate spill files have been left around
+      synchronized (kvWriter.spillInfoList) {
+        for (SpillInfo spill : kvWriter.spillInfoList) {
+          assertFalse("lingering intermediate spill file " + spill.outPath,
+                  localFs.exists(spill.outPath));
+        }
       }
-      InputStream inStream;
-      if (isInMem) {
-        inStream = new ByteArrayInputStream(eventProto.getData().getData().toByteArray());
-      } else
-      {
-        FSDataInputStream  tmpStream = FileSystem.getLocal(conf).open(outputFilePath);
+
+      // Special case for 0 records.
+      TezSpillRecord spillRecord = new TezSpillRecord(spillFilePath, conf);
+      DataInputBuffer keyBuffer = new DataInputBuffer();
+      DataInputBuffer valBuffer = new DataInputBuffer();
+      IntWritable keyDeser = new IntWritable();
+      LongWritable valDeser = new LongWritable();
+      for (int i = 0; i < numOutputs; i++) {
+        TezIndexRecord indexRecord = spillRecord.getIndex(i);
+        if (skippedPartitions != null && skippedPartitions.contains(i)) {
+          assertFalse("The Index Record for partition " + i + " should not have any data", indexRecord.hasData());
+          continue;
+        }
+        InputStream inStream;
+        FSDataInputStream tmpStream = FileSystem.getLocal(conf).open(outputFilePath);
         tmpStream.seek(indexRecord.getStartOffset());
         inStream = tmpStream;
-      }
-      IFile.Reader reader = new IFile.Reader(inStream, indexRecord.getPartLength(), codec, null,
-          null, false, 0, -1);
 
-      while (reader.nextRawKey(keyBuffer)) {
-        reader.nextRawValue(valBuffer);
-        keyDeser.readFields(keyBuffer);
-        valDeser.readFields(valBuffer);
-        int partition = partitioner.getPartition(keyDeser, valDeser, numOutputs);
-        assertTrue(expectedValues.get(partition).remove(keyDeser.get(), valDeser.get()));
+        IFile.Reader reader = new IFile.Reader(inStream, indexRecord.getPartLength(), codec, null,
+                null, false, 0, -1);
+
+        while (reader.nextRawKey(keyBuffer)) {
+          reader.nextRawValue(valBuffer);
+          keyDeser.readFields(keyBuffer);
+          valDeser.readFields(valBuffer);
+          int partition = partitioner.getPartition(keyDeser, valDeser, numOutputs);
+          assertTrue(expectedValues.get(partition).remove(keyDeser.get(), valDeser.get()));
+        }
+        inStream.close();
       }
-      inStream.close();
+      for (int i = 0; i < numOutputs; i++) {
+        assertEquals(0, expectedValues.get(i).size());
+        expectedValues.remove(i);
+      }
+      assertEquals(0, expectedValues.size());
+      verify(outputContext, atLeast(1)).notifyProgress();
     }
-    for (int i = 0; i < numOutputs; i++) {
-      assertEquals(0, expectedValues.get(i).size());
-      expectedValues.remove(i);
+    /* dataViaEvent is  enabled */
+    else {
+
+      // Special case for 0 records.
+      //TezSpillRecord spillRecord = new TezSpillRecord(spillFilePath, conf);
+      DataInputBuffer keyBuffer = new DataInputBuffer();
+      DataInputBuffer valBuffer = new DataInputBuffer();
+      IntWritable keyDeser = new IntWritable();
+      LongWritable valDeser = new LongWritable();
+      for (int i = 0; i < numOutputs; i++) {
+        //TezIndexRecord indexRecord = spillRecord.getIndex(i);
+        //if (skippedPartitions != null && skippedPartitions.contains(i)) {
+        //  assertFalse("The Index Record for partition " + i + " should not have any data", indexRecord.hasData());
+        //  continue;
+        //}
+        InputStream inStream;
+        int dataLoadSize =eventProto.getData().getData().size();
+
+        inStream = new ByteArrayInputStream(eventProto.getData().getData().toByteArray());
+
+        //IFile.Reader reader = new IFile.Reader(inStream, indexRecord.getPartLength(), codec, null,
+                //null, false, 0, -1);
+
+        IFile.Reader reader = new IFile.Reader(inStream, dataLoadSize, codec, null,
+                null, false, 0, -1);
+
+        while (reader.nextRawKey(keyBuffer)) {
+          reader.nextRawValue(valBuffer);
+          keyDeser.readFields(keyBuffer);
+          valDeser.readFields(valBuffer);
+          int partition = partitioner.getPartition(keyDeser, valDeser, numOutputs);
+          assertTrue(expectedValues.get(partition).remove(keyDeser.get(), valDeser.get()));
+        }
+        inStream.close();
+      }
+      for (int i = 0; i < numOutputs; i++) {
+        assertEquals(0, expectedValues.get(i).size());
+        expectedValues.remove(i);
+      }
+      assertEquals(0, expectedValues.size());
+      verify(outputContext, atLeast(1)).notifyProgress();
     }
-    assertEquals(0, expectedValues.size());
-    verify(outputContext, atLeast(1)).notifyProgress();
+
+
   }
 
   private static String createRandomString(int size) {
