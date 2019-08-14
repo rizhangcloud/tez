@@ -2034,4 +2034,24 @@ public class TezConfiguration extends Configuration {
   @ConfigurationProperty
   public static final String TEZ_JOB_FS_SERVERS_TOKEN_RENEWAL_EXCLUDE = "tez.job.fs-servers.token-renewal.exclude";
 
+
+  /**
+   * Boolean value. Default true.
+   * Ability to disable the Java Opts Checker
+   */
+  @Private
+  @ConfigurationScope(Scope.AM)
+  @ConfigurationProperty(type="boolean")
+  public static final String TEZ_RUNTIME_DATA_VIA_EVENTS_ENABLED =
+          TEZ_PREFIX + "runtime.data.via.events.enabled";
+  public static final boolean TEZ_RUNTIME_DATA_VIA_EVENTS_ENABLED_DEFAULT = true;
+
+
+  /** Int value. The amount of memory in MB to be used by the AppMaster */
+  @ConfigurationScope(Scope.AM)
+  @ConfigurationProperty(type="integer")
+  public static final String TEZ_RUNTIME_DATA_VIA_EVENTS_MAX_SIZE = TEZ_AM_PREFIX
+          + "runtime.data.via.event.enabled.max.size";
+  public static final int TEZ_RUNTIME_DATA_VIA_EVENTS_MAX_SIZE_DEFAULT = 2048;
+
 }

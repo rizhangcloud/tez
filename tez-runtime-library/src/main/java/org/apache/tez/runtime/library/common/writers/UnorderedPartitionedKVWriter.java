@@ -309,7 +309,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
       if (dataViaEventsEnabled) {
         /*??? the entrance to the dataViaEvent feature*/
         writer = new Writer(conf, rfs, finalOutPath, keyClass, valClass,
-                codec, outputRecordsCounter, outputRecordBytesCounter, false, true);
+                codec, outputRecordsCounter, outputRecordBytesCounter, false);
         /* writer = new BoundedByteArrayWriter(conf, rfs, finalOutPath, keyClass, valClass,
               codec, outputRecordsCounter, outputRecordBytesCounter, false);
         */

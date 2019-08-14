@@ -28,6 +28,8 @@ import com.google.common.base.Preconditions;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.io.*;
 import org.apache.tez.common.io.NonSyncDataOutputStream;
+import org.apache.tez.dag.api.TezConfiguration;
+import org.apache.tez.runtime.library.api.TezRuntimeConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -199,7 +201,7 @@ public class IFile {
     public Writer(Configuration conf, FileSystem rfs, Path file,
                   Class keyClass, Class valueClass,
                   CompressionCodec codec, TezCounter writesCounter, TezCounter serializedBytesCounter,
-                  boolean rle, boolean dataViaEventEnabled) throws IOException {
+                  boolean rle) throws IOException {
 
       //this.rawOut = outputStream;//???: how to get the rawout?
       this.writtenRecordsCounter = writesCounter;
@@ -209,11 +211,26 @@ public class IFile {
       this.start = 0;
       this.rle = rle;
 
+      boolean dataViaEventEnabled;
+      int memBufferSizeLimit;
+
+      dataViaEventEnabled = conf.getBoolean(
+              TezConfiguration.TEZ_RUNTIME_DATA_VIA_EVENTS_ENABLED,
+              TezConfiguration.TEZ_RUNTIME_DATA_VIA_EVENTS_ENABLED_DEFAULT);
+      if (dataViaEventEnabled) {
+         memBufferSizeLimit = conf.getInt(
+                TezConfiguration.TEZ_RUNTIME_DATA_VIA_EVENTS_MAX_SIZE,
+                TezConfiguration.TEZ_RUNTIME_DATA_VIA_EVENTS_MAX_SIZE_DEFAULT);
+      } else {
+        memBufferSizeLimit = 0;
+      }
+
       //this.out=new FileBackedBoundedByteArrayOutputStream(this.compressedOut, null, file, codec, rle);
-      ByteArrayOutputStream memStream = new ByteArrayOutputStream(512);
+      ByteArrayOutputStream memStream = new ByteArrayOutputStream(memBufferSizeLimit);
       //this.out = new FileBackedBoundedByteArrayOutputStream(null, null, rfs, file, codec, rle);
 
-      this.out = new FileBackedBoundedByteArrayOutputStream(memStream, null, rfs, file, codec, rle, 4096);
+      this.out = new FileBackedBoundedByteArrayOutputStream(memStream, null, rfs, file, codec,
+              rle, memBufferSizeLimit);
 
       //this.hasOverflowed = ((FileBackedBoundedByteArrayOutputStream) this.out).hasOverflowed();
 
