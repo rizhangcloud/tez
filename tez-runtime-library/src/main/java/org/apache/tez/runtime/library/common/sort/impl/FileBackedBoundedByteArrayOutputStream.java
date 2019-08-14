@@ -26,6 +26,7 @@ import java.util.function.Supplier;
 import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.hadoop.io.*;
+import org.apache.hadoop.util.DataChecksum;
 import org.apache.tez.runtime.library.common.writers.UnorderedPartitionedKVWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,16 +63,11 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
     private static final Logger LOG = LoggerFactory.getLogger(FileBackedBoundedByteArrayOutputStream.class);
     static final byte[] HEADER = new byte[]{(byte) 'T', (byte) 'I',
             (byte) 'F', (byte) 0};
-    boolean headerWritten = false;
-
-    //BoundedByteArrayOutputStream memStream = new BoundedByteArrayOutputStream(512);
 
     //BoundedByteArrayOutputStream memStream;
     //FSDataOutputStream out;
 
     ByteArrayOutputStream out;
-
-    private FSDataOutputStream internalBuffer;
 
     FileSystem fs;
     Path file;
@@ -94,17 +90,12 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
     IFileOutputStream checksumOut;
     long start = 0;
 
-    boolean ownOutputStream = false;
-
     private int bufferSize = 0;
 
-    private int currentPointer;
     private int written;
-    private int startOffset;
 
     private byte[] singleByte = new byte[1];
 
-    private byte[] bytearr = null;
 
 
     public FileBackedBoundedByteArrayOutputStream(ByteArrayOutputStream out, FileSystem.Statistics stats, FileSystem rfs,
@@ -131,11 +122,6 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
         written = 0;
     }
 
-    /*
-    public void write(int off) throws IOException {
-        write(ByteBuffer.allocate(4).putInt(off).array(), (int) this.rawOut.getPos(), 4);
-    }
-     */
 
     @Override
     public synchronized void write(byte[] b, int off, int len) throws IOException {
@@ -176,23 +162,6 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
             /* from the API, only 1 byte is written */
             singleByte[0] = (byte)b;
             write(singleByte, 0, singleByte.length);
-
-            //write(ByteBuffer.allocate(1).putInt(b).array(), written, ByteBuffer.allocate(4).putInt(b).capacity());
-
-            /*
-            if(totalBytes < out.getBuffer().length)
-            {
-                write(ByteBuffer.allocate(4).putInt(b).array(), totalBytes, ByteBuffer.allocate(4).putInt(b).capacity());
-                //totalBytes += ByteBuffer.allocate(4).putInt(b).capacity();
-            }
-            else
-            {
-                outputStream.write(b);
-                totalBytes += ByteBuffer.allocate(4).putInt(b).capacity();
-                //not compress yet
-
-            }
-            */
     }
 
     @Override
@@ -264,5 +233,25 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
         return checksumOut;
     }
 
+
+    /*
+    private void checksum(byte[] b, int off, int len) {
+        if(len >= buffer.length) {
+            sum.update(buffer, 0, offset);
+            offset = 0;
+            sum.update(b, off, len);
+            return;
+        }
+        final int remaining = buffer.length - offset;
+        if(len > remaining) {
+            sum.update(buffer, 0, offset);
+            offset = 0;
+        }
+
+
+        System.arraycopy(b, off, buffer, offset, len);
+        offset += len;
+    }
+    */
 
 }

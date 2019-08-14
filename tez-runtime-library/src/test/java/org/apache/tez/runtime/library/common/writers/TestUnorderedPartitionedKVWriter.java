@@ -54,6 +54,8 @@ import org.apache.tez.dag.api.TezConfiguration;
 import org.apache.tez.runtime.api.TaskFailureType;
 import org.apache.tez.runtime.api.events.VertexManagerEvent;
 import org.apache.tez.runtime.library.common.Constants;
+import org.apache.tez.runtime.library.common.shuffle.MemoryFetchedInput;
+import org.apache.tez.runtime.library.common.shuffle.ShuffleUtils;
 import org.apache.tez.runtime.library.common.writers.UnorderedPartitionedKVWriter.SpillInfo;
 import org.apache.tez.runtime.library.shuffle.impl.ShuffleUserPayloads.VertexManagerEventPayloadProto;
 import org.apache.tez.runtime.library.utils.DATA_RANGE_IN_MB;
@@ -1357,6 +1359,22 @@ public class TestUnorderedPartitionedKVWriter {
           assertTrue(expectedValues.get(partition).remove(keyDeser.get(), valDeser.get()));
         }
         inStream.close();
+
+        /*
+        the reader should be changed to the reader in
+        processDataMovementEvent
+        moveDataToFetchedInput
+
+        ShuffleUtils.shuffleToMemory(((MemoryFetchedInput) fetchedInput).getBytes(),
+                dataProto.getData().newInput(), dataProto.getRawLength(), dataProto.getCompressedLength(),
+                codec, ifileReadAhead, ifileReadAheadLength, LOG,
+                fetchedInput.getInputAttemptIdentifier());
+
+       public static void readToMemory(byte[] buffer, InputStream in, int compressedLength,
+
+        */
+
+
       }
       for (int i = 0; i < numOutputs; i++) {
         assertEquals(0, expectedValues.get(i).size());

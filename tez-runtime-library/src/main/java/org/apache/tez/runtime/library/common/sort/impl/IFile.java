@@ -20,6 +20,7 @@ package org.apache.tez.runtime.library.common.sort.impl;
 import java.io.*;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.zip.CRC32;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -214,7 +215,7 @@ public class IFile {
       ByteArrayOutputStream memStream = new ByteArrayOutputStream(512);
       //this.out = new FileBackedBoundedByteArrayOutputStream(null, null, rfs, file, codec, rle);
 
-      this.out = new FileBackedBoundedByteArrayOutputStream(memStream, null, rfs, file, codec, rle, 512);
+      this.out = new FileBackedBoundedByteArrayOutputStream(memStream, null, rfs, file, codec, rle, 4096);
 
       //this.hasOverflowed = ((FileBackedBoundedByteArrayOutputStream) this.out).hasOverflowed();
 
@@ -272,9 +273,19 @@ public class IFile {
         // write V_END_MARKER as needed
         writeValueMarker(out);
 
-
         // Write EOF_MARKER for key/value length
         WritableUtils.writeVInt(out, EOF_MARKER);
+        /* entrance: write the EOF */
+        /* ??? write checksum for in memory buffer */
+      /*
+        if(out instanceof FileBackedBoundedByteArrayOutputStream)
+        {
+            CRC32 crc = new CRC32();
+            crc.update(((FileBackedBoundedByteArrayOutputStream) out).getBuffer());
+            WritableUtils.writeVLong(out, crc.getValue());
+        }
+       */
+
         WritableUtils.writeVInt(out, EOF_MARKER);
         decompressedBytesWritten += 2 * WritableUtils.getVIntSize(EOF_MARKER);
         //account for header bytes
