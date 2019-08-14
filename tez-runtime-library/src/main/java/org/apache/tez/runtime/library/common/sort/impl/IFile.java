@@ -113,8 +113,6 @@ public class IFile {
     @VisibleForTesting
     boolean sameKey = false;
 
-    boolean dataViaEventUsed = false;
-
     final int RLE_MARKER_SIZE = WritableUtils.getVIntSize(RLE_MARKER);
     final int V_END_MARKER_SIZE = WritableUtils.getVIntSize(V_END_MARKER);
 

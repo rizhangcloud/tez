@@ -108,7 +108,6 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
         this.fs = rfs;
         this.file = file;
 
-        //this.limit=bufferLimit;
         this.bufferIsFull = false;
 
         this.codec = codec;
@@ -232,26 +231,5 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
     public IFileOutputStream getChecksumOut() {
         return checksumOut;
     }
-
-
-    /*
-    private void checksum(byte[] b, int off, int len) {
-        if(len >= buffer.length) {
-            sum.update(buffer, 0, offset);
-            offset = 0;
-            sum.update(b, off, len);
-            return;
-        }
-        final int remaining = buffer.length - offset;
-        if(len > remaining) {
-            sum.update(buffer, 0, offset);
-            offset = 0;
-        }
-
-
-        System.arraycopy(b, off, buffer, offset, len);
-        offset += len;
-    }
-    */
 
 }
