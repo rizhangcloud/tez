@@ -212,7 +212,7 @@ public class IFile {
       this.start = 0;
       this.rle = rle;
 
-      int memBufferSizeLimit = 2048;
+      int memBufferSizeLimit = 512;
       //this.out=new FileBackedBoundedByteArrayOutputStream(this.compressedOut, null, file, codec, rle);
       ByteArrayOutputStream memStream = new ByteArrayOutputStream(memBufferSizeLimit);
       //this.out = new FileBackedBoundedByteArrayOutputStream(null, null, rfs, file, codec, rle);
