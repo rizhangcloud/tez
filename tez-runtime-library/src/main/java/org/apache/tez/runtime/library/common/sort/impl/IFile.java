@@ -80,6 +80,7 @@ public class IFile {
     //protected FSDataOutputStream out;
     //protected NonSyncDataOutputStream out;
     protected DataOutputStream out;
+    protected FileBackedBoundedByteArrayOutputStream saveFBS;
 
     boolean ownOutputStream = false;
     long start = 0;
@@ -211,11 +212,20 @@ public class IFile {
       this.start = 0;
       this.rle = rle;
 
+      int memBufferSizeLimit = 2048;
       //this.out=new FileBackedBoundedByteArrayOutputStream(this.compressedOut, null, file, codec, rle);
-      ByteArrayOutputStream memStream = new ByteArrayOutputStream(512);
+      ByteArrayOutputStream memStream = new ByteArrayOutputStream(memBufferSizeLimit);
       //this.out = new FileBackedBoundedByteArrayOutputStream(null, null, rfs, file, codec, rle);
 
-      this.out = new FileBackedBoundedByteArrayOutputStream(memStream, null, rfs, file, codec, rle, 4096);
+      // this.out = new DataOutputStream(new FSBackedOS(...));
+      //this.out = new FileBackedBoundedByteArrayOutputStream(memStream, null, rfs, file, codec,
+              //rle, memBufferSizeLimit);
+
+      saveFBS =new FileBackedBoundedByteArrayOutputStream(memStream, null, rfs, file, codec,
+              rle, memBufferSizeLimit);
+
+      this.out = new DataOutputStream(saveFBS);
+
 
       //this.hasOverflowed = ((FileBackedBoundedByteArrayOutputStream) this.out).hasOverflowed();
 
@@ -245,15 +255,19 @@ public class IFile {
     }
 
     public boolean InMemBuffer() {
-      if (this.out instanceof FileBackedBoundedByteArrayOutputStream)
+      if (this.saveFBS instanceof FileBackedBoundedByteArrayOutputStream)
       {
-        if (!((FileBackedBoundedByteArrayOutputStream)(this.out)).hasOverflowed())
+        //if (!((FileBackedBoundedByteArrayOutputStream)(this.out)).hasOverflowed()) //???
+        if (!((this.saveFBS)).hasOverflowed())
+
               return true;
         else
           return false;
       }
       else
         return false;
+
+
     }
 
 
@@ -296,7 +310,7 @@ public class IFile {
         if (ownOutputStream) {
           out.close();
         } else {
-            if (!(out instanceof FileBackedBoundedByteArrayOutputStream)) {
+            if (!(this.saveFBS instanceof FileBackedBoundedByteArrayOutputStream)) {
               if (compressOutput) {
                 // Flush
                 compressedOut.finish();
@@ -308,9 +322,10 @@ public class IFile {
         }
 
         //header bytes are already included in rawOut
-        if( out instanceof FileBackedBoundedByteArrayOutputStream)
+        if( this.saveFBS instanceof FileBackedBoundedByteArrayOutputStream)
         {
-          ((FileBackedBoundedByteArrayOutputStream) out).getCompressedBytesWritten();
+          //((FileBackedBoundedByteArrayOutputStream) out).getCompressedBytesWritten();  //???
+          this.saveFBS.getCompressedBytesWritten();
         }
         else
           compressedBytesWritten = rawOut.getPos() - start;
@@ -322,13 +337,24 @@ public class IFile {
         }
 
           /* store the data to be placed in event payload */
-        if( out instanceof FileBackedBoundedByteArrayOutputStream)
+        if( this.saveFBS instanceof FileBackedBoundedByteArrayOutputStream)
         {
+          /*??? */
+          /*
            this.tmpDataBuffer  =
                    new byte[((FileBackedBoundedByteArrayOutputStream) this.getOutputStream()).getBuffer().length];
           System.arraycopy(((FileBackedBoundedByteArrayOutputStream) this.getOutputStream()).getBuffer(),
                   0, tmpDataBuffer, 0,
                   ((FileBackedBoundedByteArrayOutputStream) this.getOutputStream()).getBuffer().length);
+          */
+
+          this.tmpDataBuffer  =
+                  new byte[this.saveFBS.getBuffer().length];
+
+          System.arraycopy(this.saveFBS.getBuffer(),
+                  0, tmpDataBuffer, 0,
+                  (this.saveFBS).getBuffer().length);
+
 
         }
 
@@ -667,9 +693,10 @@ public class IFile {
     }
 
     public long getRawLength() {
-      if (out instanceof FileBackedBoundedByteArrayOutputStream) {
+      if (saveFBS instanceof FileBackedBoundedByteArrayOutputStream) {
         //return ((FileBackedBoundedByteArrayOutputStream) out).memStream.size();
-        return ((FileBackedBoundedByteArrayOutputStream) out).size();
+        //return ((FileBackedBoundedByteArrayOutputStream) out).size(); //???
+        return out.size();
       } else {
         return decompressedBytesWritten;
       }
@@ -678,10 +705,10 @@ public class IFile {
     /*??? assuming no compression in dataViaEvent ? */
     public long getCompressedLength() {
 
-      if(out instanceof FileBackedBoundedByteArrayOutputStream)
+      if(saveFBS instanceof FileBackedBoundedByteArrayOutputStream)
       {
-        //return ((FileBackedBoundedByteArrayOutputStream) out).memStream.size();
-        return ((FileBackedBoundedByteArrayOutputStream) out).size();
+        // return ((FileBackedBoundedByteArrayOutputStream) out).size();  //???
+        return (this.saveFBS).getCompressedBytesWritten();  //???
       }
       else
       {

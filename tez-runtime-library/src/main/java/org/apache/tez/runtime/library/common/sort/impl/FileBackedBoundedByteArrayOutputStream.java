@@ -58,7 +58,7 @@ import org.apache.tez.runtime.library.common.sort.impl.IFileOutputStream;
 @InterfaceAudience.Private
 @InterfaceStability.Unstable
 
-public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
+public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*extends FSDataOutputStream*/ {
     //public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
     private static final Logger LOG = LoggerFactory.getLogger(FileBackedBoundedByteArrayOutputStream.class);
     static final byte[] HEADER = new byte[]{(byte) 'T', (byte) 'I',
@@ -100,7 +100,7 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
 
     public FileBackedBoundedByteArrayOutputStream(ByteArrayOutputStream out, FileSystem.Statistics stats, FileSystem rfs,
                                                   Path file, CompressionCodec codec, boolean rle, int bufferLimit) {
-        super(out, stats);
+        //super(out, stats);
         this.bufferSize = bufferLimit;
 
         this.out = out;
@@ -160,7 +160,7 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
     @Override
     public synchronized void write(int b) throws IOException {
             /* from the API, only 1 byte is written */
-            singleByte[0] = (byte)b;
+            singleByte[0] = (byte) b;
             write(singleByte, 0, singleByte.length);
     }
 
@@ -233,25 +233,5 @@ public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
         return checksumOut;
     }
 
-
-    /*
-    private void checksum(byte[] b, int off, int len) {
-        if(len >= buffer.length) {
-            sum.update(buffer, 0, offset);
-            offset = 0;
-            sum.update(b, off, len);
-            return;
-        }
-        final int remaining = buffer.length - offset;
-        if(len > remaining) {
-            sum.update(buffer, 0, offset);
-            offset = 0;
-        }
-
-
-        System.arraycopy(b, off, buffer, offset, len);
-        offset += len;
-    }
-    */
 
 }
