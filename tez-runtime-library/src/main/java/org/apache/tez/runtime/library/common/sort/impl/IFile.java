@@ -289,18 +289,8 @@ public class IFile {
 
         // Write EOF_MARKER for key/value length
         WritableUtils.writeVInt(out, EOF_MARKER);
-        /* entrance: write the EOF */
-        /* ??? write checksum for in memory buffer */
-      /*
-        if(out instanceof FileBackedBoundedByteArrayOutputStream)
-        {
-            CRC32 crc = new CRC32();
-            crc.update(((FileBackedBoundedByteArrayOutputStream) out).getBuffer());
-            WritableUtils.writeVLong(out, crc.getValue());
-        }
-       */
-
         WritableUtils.writeVInt(out, EOF_MARKER);
+
         decompressedBytesWritten += 2 * WritableUtils.getVIntSize(EOF_MARKER);
         //account for header bytes
         decompressedBytesWritten += HEADER.length;
@@ -354,8 +344,6 @@ public class IFile {
           System.arraycopy(this.saveFBS.getBuffer(),
                   0, tmpDataBuffer, 0,
                   (this.saveFBS).getBuffer().length);
-
-
         }
 
 
@@ -693,13 +681,18 @@ public class IFile {
     }
 
     public long getRawLength() {
+      /*
       if (saveFBS instanceof FileBackedBoundedByteArrayOutputStream) {
+
         //return ((FileBackedBoundedByteArrayOutputStream) out).memStream.size();
         //return ((FileBackedBoundedByteArrayOutputStream) out).size(); //???
-        return out.size();
+        return saveFBS.getCompressedBytesWritten();
       } else {
         return decompressedBytesWritten;
       }
+         */
+
+      return decompressedBytesWritten;
     }
 
     /*??? assuming no compression in dataViaEvent ? */
