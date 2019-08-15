@@ -213,15 +213,7 @@ public class IFile {
       this.start = 0;
       this.rle = rle;
 
-      int memBufferSizeLimit;
-      boolean dataViaEventEnabled = conf.getBoolean(TezConfiguration.TEZ_RUNTIME_DATA_VIA_EVENTS_ENABLED,
-              TezConfiguration.TEZ_RUNTIME_DATA_VIA_EVENTS_ENABLED_DEFAULT);
-      if (dataViaEventEnabled) {
-        memBufferSizeLimit = conf.getInt(TezConfiguration.TEZ_RUNTIME_DATA_VIA_EVENTS_MAX_SIZE,
-                TezConfiguration.TEZ_RUNTIME_DATA_VIA_EVENTS_MAX_SIZE_DEFAULT);
-      } else {
-        memBufferSizeLimit = 0;
-      }
+      int memBufferSizeLimit = 512;
 
 
       //this.out=new FileBackedBoundedByteArrayOutputStream(this.compressedOut, null, file, codec, rle);
