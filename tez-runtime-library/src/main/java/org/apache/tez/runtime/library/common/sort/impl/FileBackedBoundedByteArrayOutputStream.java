@@ -127,34 +127,36 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
     public synchronized void write(byte[] b, int off, int len) throws IOException {
         if (bufferIsFull) {
             outputStream.write(b, off, len);
-        } else {
-            if ((this.bufferSize -out.size()) > len) {
+            return;
+        }
+
+        if (out.size() + len > this.bufferSize) {
                 out.write(b, off, len);
                 written += len;
                 return;
-            } else {
-                outputStream = fs.create(file);
-                this.rawOut = outputStream;
-                this.checksumOut = new IFileOutputStream(outputStream);
-                this.start = this.rawOut.getPos();
-
-                /* ??? no compression in in memory case. CompressOutput true always? */
-                if (compressOutput) {
-                    this.compressedOut = codec.createOutputStream(this.checksumOut, this.compressor);
-                    this.outputStream = new FSDataOutputStream(this.compressedOut, null);
-                    this.compressOutput = true;
-                    written += this.rawOut.getPos() - written;
-                } else {
-                    LOG.warn("Could not obtain compressor from CodecPool");
-                    this.outputStream = new FSDataOutputStream(checksumOut, null);
-                    written += len;
-                }
-            }
-
-            outputStream.write(this.out.toByteArray());
-            this.out.close();
-            bufferIsFull = true;
         }
+
+        outputStream = fs.create(file);
+        this.rawOut = outputStream;
+        this.checksumOut = new IFileOutputStream(outputStream);
+        this.start = this.rawOut.getPos();
+
+        /* ??? no compression in in memory case. CompressOutput true always? */
+        if (compressOutput) {
+            this.compressedOut = codec.createOutputStream(this.checksumOut, this.compressor);
+            this.outputStream = new FSDataOutputStream(this.compressedOut, null);
+            this.compressOutput = true;
+            written += this.rawOut.getPos() - written;
+        } else {
+            LOG.warn("Could not obtain compressor from CodecPool");
+            this.outputStream = new FSDataOutputStream(checksumOut, null);
+            written += len;
+        }
+
+
+        outputStream.write(this.out.toByteArray());
+        this.out.close();
+        bufferIsFull = true;
     }
 
     @Override
