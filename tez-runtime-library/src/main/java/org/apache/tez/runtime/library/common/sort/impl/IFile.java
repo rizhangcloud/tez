@@ -318,7 +318,7 @@ public class IFile {
         if( this.saveFBS instanceof FileBackedBoundedByteArrayOutputStream)
         {
           //((FileBackedBoundedByteArrayOutputStream) out).getCompressedBytesWritten();  //???
-          this.saveFBS.getCompressedBytesWritten();
+          compressedBytesWritten = this.saveFBS.getCompressedBytesWritten();
         }
         else
           compressedBytesWritten = rawOut.getPos() - start;
@@ -684,32 +684,11 @@ public class IFile {
     }
 
     public long getRawLength() {
-      /*
-      if (saveFBS instanceof FileBackedBoundedByteArrayOutputStream) {
-
-        //return ((FileBackedBoundedByteArrayOutputStream) out).memStream.size();
-        //return ((FileBackedBoundedByteArrayOutputStream) out).size(); //???
-        return saveFBS.getCompressedBytesWritten();
-      } else {
-        return decompressedBytesWritten;
-      }
-         */
-
       return decompressedBytesWritten;
     }
 
-    /*??? assuming no compression in dataViaEvent ? */
     public long getCompressedLength() {
-
-      if(saveFBS instanceof FileBackedBoundedByteArrayOutputStream)
-      {
-        // return ((FileBackedBoundedByteArrayOutputStream) out).size();  //???
-        return (this.saveFBS).getCompressedBytesWritten();  //???
-      }
-      else
-      {
         return compressedBytesWritten;
-      }
     }
 
     public byte[] getTmpDataBuffer() {
