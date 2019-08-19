@@ -96,6 +96,13 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
 
     private byte[] singleByte = new byte[1];
 
+    /* checksum */
+    private final DataChecksum sum;
+    private byte[] barray;
+    private byte[] buffer;
+    private int offset;
+    private boolean closed = false;
+    private boolean finished = false;
 
 
     public FileBackedBoundedByteArrayOutputStream(ByteArrayOutputStream out, FileSystem.Statistics stats, FileSystem rfs,
@@ -120,6 +127,13 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
             }
         }
         written = 0;
+
+        /* checksum initialization */
+        sum = DataChecksum.newDataChecksum(DataChecksum.Type.CRC32,
+                Integer.MAX_VALUE);
+        barray = new byte[sum.getChecksumSize()];
+        buffer = new byte[4096];
+        offset = 0;
     }
 
 
@@ -130,6 +144,10 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
         } else {
             if ((this.bufferSize -out.size()) > len) {
                 out.write(b, off, len);
+
+                //compute checksum
+
+                checksum(b, off, len);
                 written += len;
                 return;
             } else {
@@ -151,11 +169,21 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
                 }
             }
 
+            /* in memory buffer is full, switched to the file based approach，and
+            clone the data from the in memory buffer into the file based stream.
+            Not necessary to compute the checksum for the data in the in memory buffer, because
+            the in memory buffer will be cloned into the checksum based stream. */
+            /* simplified finish */
+            finished = true;
+            this.out.flush();
+
             outputStream.write(this.out.toByteArray());
-            this.out.close();
             bufferIsFull = true;
+
+            this.out.close();
         }
     }
+
 
     @Override
     public synchronized void write(int b) throws IOException {
@@ -166,8 +194,11 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
 
     @Override
     public void close() throws IOException {
-        if (!bufferIsFull)
+        if (!bufferIsFull) {
+            closed = true;
+            finish();
             this.out.close();
+        }
         else {
             this.outputStream.close();
             if (compressOutput) {
@@ -231,6 +262,51 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
 
     public IFileOutputStream getChecksumOut() {
         return checksumOut;
+    }
+
+
+
+    /* start functions for checksum computation */
+
+    /**
+     * Finishes writing data to the output stream, by writing
+     * the checksum bytes to the end. The underlying stream is not closed.
+     * @throws IOException
+     */
+    public void finish() throws IOException {
+        if (finished) {
+            return;
+        }
+        finished = true;
+        sum.update(buffer, 0, offset);
+        sum.writeValue(barray, 0, false);
+        out.write (barray, 0, sum.getChecksumSize());
+        out.flush();
+    }
+    private void checksum(byte[] b, int off, int len) {
+        if(len >= buffer.length) {
+            sum.update(buffer, 0, offset);
+            offset = 0;
+            sum.update(b, off, len);
+            return;
+        }
+        final int remaining = buffer.length - offset;
+        if(len > remaining) {
+            sum.update(buffer, 0, offset);
+            offset = 0;
+        }
+    /*
+    // FIXME if needed re-enable this in debug mode
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("XXX checksum" +
+          " b=" + b + " off=" + off +
+          " buffer=" + " offset=" + offset +
+          " len=" + len);
+    }
+    */
+        /* now we should have len < buffer.length */
+        System.arraycopy(b, off, buffer, offset, len);
+        offset += len;
     }
 
 

@@ -312,6 +312,8 @@ public class IFile {
               // Write the checksum and flush the buffer
               checksumOut.finish();
             }
+            else
+              this.saveFBS.close();
         }
 
         //header bytes are already included in rawOut
