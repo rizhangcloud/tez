@@ -761,7 +761,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
       List<Event> events = Lists.newLinkedList();
       if (!pipelinedShuffle) {
         if (skipBuffers) {
-          inMemBuffer = writer.InMemBuffer();
+          inMemBuffer = writer.inMemBuffer();
 
           writer.close();
           long rawLen = writer.getRawLength();

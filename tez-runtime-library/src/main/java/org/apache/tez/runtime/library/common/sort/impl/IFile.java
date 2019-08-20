@@ -229,6 +229,8 @@ public class IFile {
 
       this.out = new DataOutputStream(saveFBS);
 
+      this.dataViaEventUsed = true;
+
 
       //this.hasOverflowed = ((FileBackedBoundedByteArrayOutputStream) this.out).hasOverflowed();
 
@@ -257,20 +259,11 @@ public class IFile {
       }
     }
 
-    public boolean InMemBuffer() {
-      if (this.saveFBS instanceof FileBackedBoundedByteArrayOutputStream)
-      {
-        //if (!((FileBackedBoundedByteArrayOutputStream)(this.out)).hasOverflowed()) //???
-        if (!((this.saveFBS)).hasOverflowed())
-
-              return true;
-        else
-          return false;
-      }
+    public boolean inMemBuffer() {
+      if ((this.dataViaEventUsed) && (!((this.saveFBS)).hasOverflowed()))
+        return true;
       else
-        return false;
-
-
+          return false;
     }
 
 
@@ -301,9 +294,10 @@ public class IFile {
 
         // Close the underlying stream iff we own it...
         if (ownOutputStream) {
+          /*??? dataViaEvent case */
           out.close();
         } else {
-            if (!(this.saveFBS instanceof FileBackedBoundedByteArrayOutputStream)) {
+            if (!this.dataViaEventUsed) {
               if (compressOutput) {
                 // Flush
                 compressedOut.finish();
@@ -317,9 +311,8 @@ public class IFile {
         }
 
         //header bytes are already included in rawOut
-        if( this.saveFBS instanceof FileBackedBoundedByteArrayOutputStream)
+        if(dataViaEventUsed)
         {
-          //((FileBackedBoundedByteArrayOutputStream) out).getCompressedBytesWritten();  //???
           compressedBytesWritten = this.saveFBS.getCompressedBytesWritten();
         }
         else
@@ -332,17 +325,8 @@ public class IFile {
         }
 
           /* store the data to be placed in event payload */
-        if( this.saveFBS instanceof FileBackedBoundedByteArrayOutputStream)
+        if(inMemBuffer())
         {
-          /*??? */
-          /*
-           this.tmpDataBuffer  =
-                   new byte[((FileBackedBoundedByteArrayOutputStream) this.getOutputStream()).getBuffer().length];
-          System.arraycopy(((FileBackedBoundedByteArrayOutputStream) this.getOutputStream()).getBuffer(),
-                  0, tmpDataBuffer, 0,
-                  ((FileBackedBoundedByteArrayOutputStream) this.getOutputStream()).getBuffer().length);
-          */
-
           this.tmpDataBuffer  =
                   new byte[this.saveFBS.getBuffer().length];
 
@@ -366,108 +350,6 @@ public class IFile {
         }
 
     }
-
-
-
-    /*
-    public void close() throws IOException {
-      if (closed.getAndSet(true)) {
-        throw new IOException("Writer was already closed earlier");
-      }
-
-      // When IFile writer is created by BackupStore, we do not have
-      // Key and Value classes set. So, check before closing the
-      // serializers
-      if (closeSerializers) {
-        keySerializer.close();
-        valueSerializer.close();
-      }
-
-
-      if(!this.hasOverflowed) {
-        //if((out instanceof FileBackedBoundedByteArrayOutputStream) && (!((FileBackedBoundedByteArrayOutputStream)out).hasOverflowed()){
-
-        if (ownOutputStream) {
-          out.close();
-        } else {
-          if (compressOutput) {
-            // Flush
-            compressedOut.finish();
-            compressedOut.resetState();
-          }
-          // Write the checksum and flush the buffer
-          //checksumOut.finish();
-        }
-      }
-      else {
-        // write V_END_MARKER as needed
-        writeValueMarker(out);
-
-        // Write EOF_MARKER for key/value length
-        WritableUtils.writeVInt(out, EOF_MARKER);
-        WritableUtils.writeVInt(out, EOF_MARKER);
-        decompressedBytesWritten += 2 * WritableUtils.getVIntSize(EOF_MARKER);
-        //account for header bytes
-        decompressedBytesWritten += HEADER.length;
-        // Close the underlying stream iff we own it...
-        if (ownOutputStream) {
-          out.close();
-        } else {
-          if(out instanceof FileBackedBoundedByteArrayOutputStream)
-          {
-            boolean compressOutputTmp = ((FileBackedBoundedByteArrayOutputStream)out).getCompressOutput();
-            if (compressOutputTmp) {
-              CompressionOutputStream compressedOutTmp = ((FileBackedBoundedByteArrayOutputStream) out).getCompressedOut();
-              compressedOutTmp.finish();
-              compressedOutTmp.resetState();
-            }
-            ((FileBackedBoundedByteArrayOutputStream)out).getChecksumOut().finish();
-
-            //header bytes are already included in rawOut  //???
-            compressedBytesWritten =
-                    ((FileBackedBoundedByteArrayOutputStream) out).getRawOut().getPos() -
-                            ((FileBackedBoundedByteArrayOutputStream) out).getStart();
-          }else
-          {
-            if(compressOutput) {
-              // Flush
-              compressedOut.finish();
-              compressedOut.resetState();
-            }
-            // Write the checksum and flush the buffer
-            checksumOut.finish();
-
-            //header bytes are already included in rawOut  //???
-            compressedBytesWritten = rawOut.getPos() - start;
-
-          }
-        }
-
-        //header bytes are already included in rawOut  //???
-        compressedBytesWritten = rawOut.getPos() - start;
-
-        if (writtenRecordsCounter != null) {
-          writtenRecordsCounter.increment(numRecordsWritten);
-        }
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Total keys written=" + numRecordsWritten + "; rleEnabled=" + rle + "; Savings" +
-                  "(due to multi-kv/rle)=" + totalKeySaving + "; number of RLEs written=" +
-                  rleWritten + "; compressedLen=" + compressedBytesWritten + "; rawLen="
-                  + decompressedBytesWritten);
-        }
-      }
-
-
-      out = null;
-      if (compressOutput) {
-        // Return back the compressor
-        CodecPool.returnCompressor(compressor);
-        compressor = null;
-      }
-
-    }
-    */
-
 
 
 

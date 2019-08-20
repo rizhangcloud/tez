@@ -146,7 +146,6 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
                 out.write(b, off, len);
 
                 //compute checksum
-
                 checksum(b, off, len);
                 written += len;
                 return;
@@ -177,7 +176,10 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
             finished = true;
             this.out.flush();
 
+            /* clone the data from the in memory buffer into the file based stream */
             outputStream.write(this.out.toByteArray());
+            /* write the data for which the in memory does not have enough space to the file based stream */
+            outputStream.write(b, off, len);
             bufferIsFull = true;
 
             this.out.close();
@@ -200,7 +202,7 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
             this.out.close();
         }
         else {
-            this.outputStream.close();
+            //this.outputStream.close();
             if (compressOutput) {
                 // Flush
                 compressedOut.finish();
@@ -308,6 +310,5 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
         System.arraycopy(b, off, buffer, offset, len);
         offset += len;
     }
-
 
 }
