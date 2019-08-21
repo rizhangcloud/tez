@@ -134,6 +134,7 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
         barray = new byte[sum.getChecksumSize()];
         buffer = new byte[4096];
         offset = 0;
+
     }
 
 
