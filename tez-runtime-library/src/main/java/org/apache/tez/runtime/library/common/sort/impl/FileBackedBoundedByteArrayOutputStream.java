@@ -61,8 +61,6 @@ import org.apache.tez.runtime.library.common.sort.impl.IFileOutputStream;
 public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*extends FSDataOutputStream*/ {
     //public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
     private static final Logger LOG = LoggerFactory.getLogger(FileBackedBoundedByteArrayOutputStream.class);
-    static final byte[] HEADER = new byte[]{(byte) 'T', (byte) 'I',
-            (byte) 'F', (byte) 0};
 
     //BoundedByteArrayOutputStream memStream;
     //FSDataOutputStream out;
@@ -72,7 +70,11 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
     FileSystem fs;
     Path file;
 
+    int headerLength;
+
     boolean bufferIsFull;
+
+    FSDataOutputStream baseStream;
 
     FSDataOutputStream outputStream;
 
@@ -106,7 +108,8 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
 
 
     public FileBackedBoundedByteArrayOutputStream(ByteArrayOutputStream out, FileSystem.Statistics stats, FileSystem rfs,
-                                                  Path file, CompressionCodec codec, boolean rle, int bufferLimit) {
+                                                  Path file, CompressionCodec codec, boolean rle, int bufferLimit,
+                                                  int headerLength) {
         //super(out, stats);
         this.bufferSize = bufferLimit;
 
@@ -114,6 +117,8 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
 
         this.fs = rfs;
         this.file = file;
+
+        this.headerLength = headerLength;
 
         //this.limit=bufferLimit;
         this.bufferIsFull = false;
@@ -151,9 +156,9 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
                 written += len;
                 return;
             } else {
-                outputStream = fs.create(file);
-                this.rawOut = outputStream;
-                this.checksumOut = new IFileOutputStream(outputStream);
+                baseStream = fs.create(file);
+                this.rawOut = baseStream;
+                this.checksumOut = new IFileOutputStream(baseStream);
                 this.start = this.rawOut.getPos();
 
                 /* ??? no compression in in memory case. CompressOutput true always? */
@@ -178,8 +183,13 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
             this.out.flush();
 
             /* clone the data from the in memory buffer into the file based stream */
-            outputStream.write(this.out.toByteArray());
+            //outputStream.write(this.out.toByteArray());
+            byte[] inMemData = this.out.toByteArray();
+            baseStream.write(inMemData, 0, this.headerLength);
+            outputStream.write(inMemData, this.headerLength, inMemData.length-this.headerLength);
+
             /* write the data for which the in memory does not have enough space to the file based stream */
+            //outputStream.write(b, off, len);
             outputStream.write(b, off, len);
             bufferIsFull = true;
 

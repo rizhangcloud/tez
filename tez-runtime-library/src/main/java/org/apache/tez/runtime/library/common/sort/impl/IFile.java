@@ -225,7 +225,7 @@ public class IFile {
               //rle, memBufferSizeLimit);
 
       saveFBS =new FileBackedBoundedByteArrayOutputStream(memStream, null, rfs, file, codec,
-              rle, memBufferSizeLimit);
+              rle, memBufferSizeLimit, HEADER.length);
 
       this.out = new DataOutputStream(saveFBS);
 
