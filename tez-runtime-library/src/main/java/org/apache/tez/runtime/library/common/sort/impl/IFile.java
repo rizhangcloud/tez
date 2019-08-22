@@ -77,9 +77,6 @@ public class IFile {
   @InterfaceStability.Unstable
   @SuppressWarnings({"unchecked", "rawtypes"})
   public static class Writer {
-    //protected FileBackedBoundedByteArrayOutputStream out;
-    //protected FSDataOutputStream out;
-    //protected NonSyncDataOutputStream out;
     protected DataOutputStream out;
     protected FileBackedBoundedByteArrayOutputStream saveFBS;
 
@@ -115,7 +112,7 @@ public class IFile {
     @VisibleForTesting
     boolean sameKey = false;
 
-    boolean dataViaEventUsed = false;
+    boolean dataViaEvenEnabled = false;
 
     final int RLE_MARKER_SIZE = WritableUtils.getVIntSize(RLE_MARKER);
     final int V_END_MARKER_SIZE = WritableUtils.getVIntSize(V_END_MARKER);
@@ -123,11 +120,9 @@ public class IFile {
     // de-dup keys or not
     protected final boolean rle;
 
-    // store the data going to place in payload
+    // store the in memory buffer data that is going to be placed in payload
     byte[] tmpDataBuffer;
 
-
-    /* Note: the original first Writer constructor which creates file */
 
     public Writer(Configuration conf, FileSystem fs, Path file,
                   Class keyClass, Class valueClass,
@@ -139,15 +134,12 @@ public class IFile {
       ownOutputStream = true;
     }
 
-     /* Note: the second Writer constructor */
     protected Writer(TezCounter writesCounter, TezCounter serializedBytesCounter, boolean rle) {
       writtenRecordsCounter = writesCounter;
       serializedUncompressedBytes = serializedBytesCounter;
       this.rle = rle;
     }
 
-    /* The old third constructor, which is obsolete now. Now can not input the FSDataOutputStream to a
-     *  Writer constructor. */
     public Writer(Configuration conf, FSDataOutputStream outputStream,
                   Class keyClass, Class valueClass, CompressionCodec codec, TezCounter writesCounter,
                   TezCounter serializedBytesCounter) throws IOException {
@@ -156,7 +148,6 @@ public class IFile {
     }
 
 
-    /* The old forth constructor */
     public Writer(Configuration conf, FSDataOutputStream outputStream,
                   Class keyClass, Class valueClass,
                   CompressionCodec codec, TezCounter writesCounter, TezCounter serializedBytesCounter,
@@ -197,44 +188,28 @@ public class IFile {
     }
 
 
-    /* The fifth constructor, which receives fs, and file, but does not create file. It uses the new
-       stream.
+    /* The constructor to be used if the dataViaEvent is enabled.
+     * It receives fs, and file, but does not create file stream right away.
      */
     public Writer(Configuration conf, FileSystem rfs, Path file,
                   Class keyClass, Class valueClass,
                   CompressionCodec codec, TezCounter writesCounter, TezCounter serializedBytesCounter,
-                  boolean rle, boolean dataViaEventEnabled) throws IOException {
-
-      //this.rawOut = outputStream;//???: how to get the rawout?
+                  boolean rle, boolean dataViaEventUsed) throws IOException {
       this.writtenRecordsCounter = writesCounter;
       this.serializedUncompressedBytes = serializedBytesCounter;
-
-      //this.start = this.rawOut.getPos(); //???
       this.start = 0;
       this.rle = rle;
 
       int memBufferSizeLimit = 512;
 
-
-      //this.out=new FileBackedBoundedByteArrayOutputStream(this.compressedOut, null, file, codec, rle);
       ByteArrayOutputStream memStream = new ByteArrayOutputStream(memBufferSizeLimit);
-      //this.out = new FileBackedBoundedByteArrayOutputStream(null, null, rfs, file, codec, rle);
-
-      // this.out = new DataOutputStream(new FSBackedOS(...));
-      //this.out = new FileBackedBoundedByteArrayOutputStream(memStream, null, rfs, file, codec,
-              //rle, memBufferSizeLimit);
-
       saveFBS =new FileBackedBoundedByteArrayOutputStream(memStream, null, rfs, file, codec,
               rle, memBufferSizeLimit, HEADER.length);
 
       this.out = new DataOutputStream(saveFBS);
 
-      this.dataViaEventUsed = true;
+      this.dataViaEvenEnabled = dataViaEventUsed;
 
-
-      //this.hasOverflowed = ((FileBackedBoundedByteArrayOutputStream) this.out).hasOverflowed();
-
-      /* ??? write the header from the beginning */
       writeHeader(memStream);
 
       if (keyClass != null) {
@@ -260,7 +235,7 @@ public class IFile {
     }
 
     public boolean inMemBuffer() {
-      if ((this.dataViaEventUsed) && (!((this.saveFBS)).hasOverflowed()))
+      if ((this.dataViaEvenEnabled) && (!((this.saveFBS)).hasOverflowed()))
         return true;
       else
           return false;
@@ -297,7 +272,7 @@ public class IFile {
           /*??? dataViaEvent case */
           out.close();
         } else {
-            if (!this.dataViaEventUsed) {
+            if (!this.dataViaEvenEnabled) {
               if (compressOutput) {
                 // Flush
                 compressedOut.finish();
@@ -312,11 +287,7 @@ public class IFile {
             }
         }
 
-        //??? testing
-        //this.checksumOut = saveFBS.checksumOut;
-
-        //header bytes are already included in rawOut
-        if(dataViaEventUsed)
+        if(dataViaEvenEnabled)
         {
           compressedBytesWritten = this.saveFBS.getCompressedBytesWritten();
         }
@@ -583,40 +554,6 @@ public class IFile {
     public byte[] getTmpDataBuffer() {
       return tmpDataBuffer;
     }
-
-    /* ??? originally implemented in FileBasedKVWriter. To enable dataViaEvent, add it back */
-    /*
-    public byte[] getData() throws IOException {
-
-      Preconditions.checkState(this.closed,
-              "Only available after the Writer has been closed");
-
-
-      if(this.getOutputStream() instanceof FileBackedBoundedByteArrayOutputStream)
-      {
-        return ((FileBackedBoundedByteArrayOutputStream)(this.getOutputStream())).getBuffer();
-      }
-      //else
-        //return null;
-      else {
-        //m the old stream
-        FSDataInputStream inStream = null;
-
-        byte[] buf = null;
-        try {
-
-          inStream = rfs.open(finalOutPath); //??? finalOutPath
-          buf = new byte[(int) getCompressedLength()];
-          IOUtils.readFully(inStream, buf, 0, (int) getCompressedLength());
-        } finally {
-          if (inStream != null) {
-            inStream.close();
-          }
-        }
-        return buf;
-      }
-    }*/
-
   }
 
   /**

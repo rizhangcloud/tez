@@ -59,11 +59,7 @@ import org.apache.tez.runtime.library.common.sort.impl.IFileOutputStream;
 @InterfaceStability.Unstable
 
 public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*extends FSDataOutputStream*/ {
-    //public class FileBackedBoundedByteArrayOutputStream extends FSDataOutputStream {
-    private static final Logger LOG = LoggerFactory.getLogger(FileBackedBoundedByteArrayOutputStream.class);
-
-    //BoundedByteArrayOutputStream memStream;
-    //FSDataOutputStream out;
+        private static final Logger LOG = LoggerFactory.getLogger(FileBackedBoundedByteArrayOutputStream.class);
 
     ByteArrayOutputStream out;
 
@@ -110,21 +106,15 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
     public FileBackedBoundedByteArrayOutputStream(ByteArrayOutputStream out, FileSystem.Statistics stats, FileSystem rfs,
                                                   Path file, CompressionCodec codec, boolean rle, int bufferLimit,
                                                   int headerLength) {
-        //super(out, stats);
         this.bufferSize = bufferLimit;
-
         this.out = out;
-
         this.fs = rfs;
         this.file = file;
-
         this.headerLength = headerLength;
-
-        //this.limit=bufferLimit;
         this.bufferIsFull = false;
-
         this.codec = codec;
         this.rle = rle;
+
         if (this.codec != null) {
             this.compressor = CodecPool.getCompressor(codec);
             if (this.compressor != null) {
@@ -150,8 +140,6 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
         } else {
             if ((this.bufferSize -out.size()) > len) {
                 out.write(b, off, len);
-
-                //compute checksum
                 checksum(b, off, len);
                 written += len;
                 return;
@@ -161,7 +149,6 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
                 this.checksumOut = new IFileOutputStream(baseStream);
                 this.start = this.rawOut.getPos();
 
-                /* ??? no compression in in memory case. CompressOutput true always? */
                 if (compressOutput) {
                     this.compressedOut = codec.createOutputStream(this.checksumOut, this.compressor);
                     this.outputStream = new FSDataOutputStream(this.compressedOut, null);
@@ -174,22 +161,19 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
                 }
             }
 
-            /* in memory buffer is full, switched to the file based approach，and
+            /* If the in memory buffer is full, switched to the file based approach，and
             clone the data from the in memory buffer into the file based stream.
             Not necessary to compute the checksum for the data in the in memory buffer, because
             the in memory buffer will be cloned into the checksum based stream. */
-            /* simplified finish */
             finished = true;
             this.out.flush();
 
             /* clone the data from the in memory buffer into the file based stream */
-            //outputStream.write(this.out.toByteArray());
             byte[] inMemData = this.out.toByteArray();
             baseStream.write(inMemData, 0, this.headerLength);
             outputStream.write(inMemData, this.headerLength, inMemData.length-this.headerLength);
 
             /* write the data for which the in memory does not have enough space to the file based stream */
-            //outputStream.write(b, off, len);
             outputStream.write(b, off, len);
             bufferIsFull = true;
 
@@ -198,14 +182,17 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
     }
 
 
+    /**
+     * Writes the specified byte to this output stream.
+     * Only the lower eight bits will be written into the output stream, and the higher 24 bits are
+     * ignored. This method is required by all the subclasses of <code>OutputStream</code>
+     * one byte will be written into the output stream.
+     */
     @Override
     public synchronized void write(int b) throws IOException {
             /* from the API, only 1 byte is written */
             singleByte[0] = (byte) b;
             write(singleByte, 0, singleByte.length);
-            /* ??? second approach */
-            //byte[] bytes = ByteBuffer.allocate(4).putInt(b).array();
-            //write(bytes, 0, singleByte.length);
     }
 
     @Override
@@ -216,7 +203,7 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
             this.out.close();
         }
         else {
-            //this.outputStream.close();
+
             if (compressOutput) {
                 // Flush
                 compressedOut.finish();
@@ -245,43 +232,14 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
         }
     }
 
-    public FSDataOutputStream getRawOut() {
-        return rawOut;
-    }
-
     public long getStart() {
         return start;
     }
-
 
     public CompressionCodec getCodec() {
         return codec;
     }
 
-    public CompressionOutputStream getCompressedOut() {
-        return compressedOut;
-    }
-
-    public Compressor getCompressor() {
-        return compressor;
-    }
-
-    public boolean getCompressOutput() {
-        return compressOutput;
-    }
-
-    // de-dup keys or not
-    public boolean getRle() {
-        return rle;
-    }
-
-    public IFileOutputStream getChecksumOut() {
-        return checksumOut;
-    }
-
-
-
-    /* start functions for checksum computation */
 
     /**
      * Finishes writing data to the output stream, by writing

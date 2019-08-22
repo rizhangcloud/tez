@@ -304,15 +304,10 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
       finalIndexPath = outputFileHandler.getOutputIndexFileForWrite(indexFileSizeEstimate);
       skipBuffers = true;
 
-      //if (dataViaEventsEnabled && outputGenerated && this.kvWriter.getCompressedLength() <= dataViaEventsMaxSize) {
-      //if (dataViaEventsEnabled && this.kvWriter.getCompressedLength() <= dataViaEventsMaxSize) {
       if (dataViaEventsEnabled) {
-        /*??? the entrance to the dataViaEvent feature*/
+        /* the entrance to use the dataViaEvent */
         writer = new Writer(conf, rfs, finalOutPath, keyClass, valClass,
                 codec, outputRecordsCounter, outputRecordBytesCounter, false, true);
-        /* writer = new BoundedByteArrayWriter(conf, rfs, finalOutPath, keyClass, valClass,
-              codec, outputRecordsCounter, outputRecordBytesCounter, false);
-        */
       }
       else {
         writer = new IFile.Writer(conf, rfs, finalOutPath, keyClass, valClass,
