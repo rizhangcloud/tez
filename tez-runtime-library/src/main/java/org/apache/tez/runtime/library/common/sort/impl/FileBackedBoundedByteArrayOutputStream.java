@@ -191,11 +191,11 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
     @Override
     public synchronized void write(int b) throws IOException {
             /* from the API, only 1 byte is written */
-
-            byte[] bytes = ByteBuffer.allocate(4).putInt(b).array();
-            //singleByte[0] = (byte) b;
-            //write(singleByte, 0, singleByte.length);
-            write(bytes, 0, singleByte.length);
+            singleByte[0] = (byte) b;
+            write(singleByte, 0, singleByte.length);
+            /* ??? second approach */
+            //byte[] bytes = ByteBuffer.allocate(4).putInt(b).array();
+            //write(bytes, 0, singleByte.length);
     }
 
     @Override
