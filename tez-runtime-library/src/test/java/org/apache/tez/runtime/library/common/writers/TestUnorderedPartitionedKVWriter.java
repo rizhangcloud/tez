@@ -245,100 +245,100 @@ public class TestUnorderedPartitionedKVWriter {
     assertEquals(1, kvWriter.spillLimit);
   }
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testNoSpill() throws IOException, InterruptedException {
     baseTest(10, 10, null, shouldCompress, -1, 0);
   }
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testSingleSpill() throws IOException, InterruptedException {
     baseTest(50, 10, null, shouldCompress, -1, 0);
   }
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testMultipleSpills() throws IOException, InterruptedException {
     baseTest(200, 10, null, shouldCompress, -1, 0);
   }
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testMultipleSpillsWithSmallBuffer() throws IOException, InterruptedException {
     // numBuffers is much higher than available threads.
     baseTest(200, 10, null, shouldCompress, 512, 0, 9600);
   }
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testMergeBuffersAndSpill() throws IOException, InterruptedException {
     baseTest(200, 10, null, shouldCompress, 2048, 10);
   }
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testNoRecords() throws IOException, InterruptedException {
     baseTest(0, 10, null, shouldCompress, -1, 0);
   }
 
-  @Test(timeout = 10000000)
+  @Test(timeout = 100000)
   public void testNoRecords_SinglePartition() throws IOException, InterruptedException {
     // skipBuffers
     baseTest(0, 1, null, shouldCompress, -1, 0);
   }
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testSkippedPartitions() throws IOException, InterruptedException {
     baseTest(200, 10, Sets.newHashSet(2, 5), shouldCompress, -1, 0);
   }
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testNoSpill_SinglePartition() throws IOException, InterruptedException {
     baseTest(10, 1, null, shouldCompress, -1, 0);
   }
 
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testRandomText() throws IOException, InterruptedException {
     textTest(100, 10, 2048, 0, 0, 0, false, true);
   }
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testLargeKeys() throws IOException, InterruptedException {
     textTest(0, 10, 2048, 10, 0, 0, false, true);
   }
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testLargevalues() throws IOException, InterruptedException {
     textTest(0, 10, 2048, 0, 10, 0, false, true);
   }
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testLargeKvPairs() throws IOException, InterruptedException {
     textTest(0, 10, 2048, 0, 0, 10, false, true);
   }
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testTextMixedRecords() throws IOException, InterruptedException {
     textTest(100, 10, 2048, 10, 10, 10, false, true);
   }
 
-  @Test(timeout = 10000000)
+  @Test(timeout = 10000)
   public void testRandomTextWithoutFinalMerge() throws IOException, InterruptedException {
     textTest(100, 10, 2048, 0, 0, 0, false, false);
   }
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testLargeKeysWithoutFinalMerge() throws IOException, InterruptedException {
     textTest(0, 10, 2048, 10, 0, 0, false, false);
   }
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testLargevaluesWithoutFinalMerge() throws IOException, InterruptedException {
     textTest(0, 10, 2048, 0, 10, 0, false, false);
   }
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testLargeKvPairsWithoutFinalMerge() throws IOException, InterruptedException {
     textTest(0, 10, 2048, 0, 0, 10, false, false);
   }
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testTextMixedRecordsWithoutFinalMerge() throws IOException, InterruptedException {
     textTest(100, 10, 2048, 10, 10, 10, false, false);
   }
@@ -606,38 +606,38 @@ public class TestUnorderedPartitionedKVWriter {
     }
   }
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testNoSpill_WithPipelinedShuffle() throws IOException, InterruptedException {
     baseTestWithPipelinedTransfer(10, 10, null, shouldCompress);
   }
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testSingleSpill_WithPipelinedShuffle() throws IOException, InterruptedException {
     baseTestWithPipelinedTransfer(50, 10, null, shouldCompress);
   }
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testMultipleSpills_WithPipelinedShuffle() throws IOException, InterruptedException {
     baseTestWithPipelinedTransfer(200, 10, null, shouldCompress);
   }
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testNoRecords_WithPipelinedShuffle() throws IOException, InterruptedException {
     baseTestWithPipelinedTransfer(0, 10, null, shouldCompress);
   }
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testNoRecords_SinglePartition_WithPipelinedShuffle() throws IOException, InterruptedException {
     // skipBuffers
     baseTestWithPipelinedTransfer(0, 1, null, shouldCompress);
   }
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testSkippedPartitions_WithPipelinedShuffle() throws IOException, InterruptedException {
     baseTestWithPipelinedTransfer(200, 10, Sets.newHashSet(2, 5), shouldCompress);
   }
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testLargeKvPairs_WithPipelinedShuffle() throws IOException, InterruptedException {
     textTest(0, 10, 2048, 10, 20, 50, true, false);
   }
@@ -1270,7 +1270,7 @@ public class TestUnorderedPartitionedKVWriter {
 
     boolean isInMem= eventProto.getData().hasData();
 
-    /* dataViaEvent is not enabled */
+    // dataViaEvent is not attached in the in event
     if( !isInMem ) {
       assertTrue(localFs.exists(outputFilePath));
       assertTrue(localFs.exists(spillFilePath));
@@ -1325,29 +1325,18 @@ public class TestUnorderedPartitionedKVWriter {
       assertEquals(0, expectedValues.size());
       verify(outputContext, atLeast(1)).notifyProgress();
     }
-    /* dataViaEvent is  enabled */
+    // dataViaEvent is enabled and data is in the event payload
     else {
-
       // Special case for 0 records.
-      //TezSpillRecord spillRecord = new TezSpillRecord(spillFilePath, conf);
       DataInputBuffer keyBuffer = new DataInputBuffer();
       DataInputBuffer valBuffer = new DataInputBuffer();
       IntWritable keyDeser = new IntWritable();
       LongWritable valDeser = new LongWritable();
       for (int i = 0; i < numOutputs; i++) {
-        //TezIndexRecord indexRecord = spillRecord.getIndex(i);
-        //if (skippedPartitions != null && skippedPartitions.contains(i)) {
-        //  assertFalse("The Index Record for partition " + i + " should not have any data", indexRecord.hasData());
-        //  continue;
-        //}
         InputStream inStream;
         int dataLoadSize =eventProto.getData().getData().size();
 
         inStream = new ByteArrayInputStream(eventProto.getData().getData().toByteArray());
-
-        //IFile.Reader reader = new IFile.Reader(inStream, indexRecord.getPartLength(), codec, null,
-                //null, false, 0, -1);
-
         IFile.Reader reader = new IFile.Reader(inStream, dataLoadSize, codec, null,
                 null, false, 0, -1);
 
@@ -1359,22 +1348,6 @@ public class TestUnorderedPartitionedKVWriter {
           assertTrue(expectedValues.get(partition).remove(keyDeser.get(), valDeser.get()));
         }
         inStream.close();
-
-        /*
-        the reader should be changed to the reader in
-        processDataMovementEvent
-        moveDataToFetchedInput
-
-        ShuffleUtils.shuffleToMemory(((MemoryFetchedInput) fetchedInput).getBytes(),
-                dataProto.getData().newInput(), dataProto.getRawLength(), dataProto.getCompressedLength(),
-                codec, ifileReadAhead, ifileReadAheadLength, LOG,
-                fetchedInput.getInputAttemptIdentifier());
-
-       public static void readToMemory(byte[] buffer, InputStream in, int compressedLength,
-
-        */
-
-
       }
       for (int i = 0; i < numOutputs; i++) {
         assertEquals(0, expectedValues.get(i).size());
@@ -1383,7 +1356,6 @@ public class TestUnorderedPartitionedKVWriter {
       assertEquals(0, expectedValues.size());
       verify(outputContext, atLeast(1)).notifyProgress();
     }
-
 
   }
 

@@ -59,25 +59,17 @@ import org.apache.tez.runtime.library.common.sort.impl.IFileOutputStream;
 @InterfaceStability.Unstable
 
 public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*extends FSDataOutputStream*/ {
-        private static final Logger LOG = LoggerFactory.getLogger(FileBackedBoundedByteArrayOutputStream.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FileBackedBoundedByteArrayOutputStream.class);
 
     ByteArrayOutputStream out;
-
     FileSystem fs;
     Path file;
-
     int headerLength;
-
     boolean bufferIsFull;
-
     FSDataOutputStream baseStream;
-
     FSDataOutputStream outputStream;
-
     FSDataOutputStream rawOut;
-
     CompressionCodec codec;
-
     CompressionOutputStream compressedOut;
     Compressor compressor;
     boolean compressOutput = false;
@@ -87,14 +79,10 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
 
     IFileOutputStream checksumOut;
     long start = 0;
-
     private int bufferSize = 0;
-
     private int written;
-
     private byte[] singleByte = new byte[1];
 
-    /* checksum */
     private final DataChecksum sum;
     private byte[] barray;
     private byte[] buffer;
@@ -173,7 +161,7 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
             baseStream.write(inMemData, 0, this.headerLength);
             outputStream.write(inMemData, this.headerLength, inMemData.length-this.headerLength);
 
-            /* write the data for which the in memory does not have enough space to the file based stream */
+            // write the data for which the in memory does not have enough space to the file based stream
             outputStream.write(b, off, len);
             bufferIsFull = true;
 

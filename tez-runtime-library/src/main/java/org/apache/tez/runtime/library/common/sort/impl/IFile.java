@@ -194,17 +194,15 @@ public class IFile {
     public Writer(Configuration conf, FileSystem rfs, Path file,
                   Class keyClass, Class valueClass,
                   CompressionCodec codec, TezCounter writesCounter, TezCounter serializedBytesCounter,
-                  boolean rle, boolean dataViaEventUsed) throws IOException {
+                  boolean rle, boolean dataViaEventUsed, int dataViaEventsMaxSize) throws IOException {
       this.writtenRecordsCounter = writesCounter;
       this.serializedUncompressedBytes = serializedBytesCounter;
       this.start = 0;
       this.rle = rle;
 
-      int memBufferSizeLimit = 512;
-
-      ByteArrayOutputStream memStream = new ByteArrayOutputStream(memBufferSizeLimit);
+      ByteArrayOutputStream memStream = new ByteArrayOutputStream(dataViaEventsMaxSize);
       saveFBS =new FileBackedBoundedByteArrayOutputStream(memStream, null, rfs, file, codec,
-              rle, memBufferSizeLimit, HEADER.length);
+              rle, dataViaEventsMaxSize, HEADER.length);
 
       this.out = new DataOutputStream(saveFBS);
 
@@ -224,7 +222,6 @@ public class IFile {
         this.closeSerializers = false;
       }
     }
-
 
     protected void writeHeader(OutputStream outputStream) throws IOException {
       if (!headerWritten) {
@@ -269,7 +266,6 @@ public class IFile {
 
         // Close the underlying stream iff we own it...
         if (ownOutputStream) {
-          /*??? dataViaEvent case */
           out.close();
         } else {
             if (!this.dataViaEvenEnabled) {
@@ -300,7 +296,7 @@ public class IFile {
           compressor = null;
         }
 
-          /* store the data to be placed in event payload */
+        //store the data to be placed in event payload
         if(inMemBuffer())
         {
           this.tmpDataBuffer  =
@@ -310,7 +306,6 @@ public class IFile {
                   0, tmpDataBuffer, 0,
                   (this.saveFBS).getBuffer().length);
         }
-
 
         out = null;
 
