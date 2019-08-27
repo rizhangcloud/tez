@@ -305,9 +305,6 @@ public class IFile {
           System.arraycopy(this.saveFBS.getBuffer(),
                   0, tmpDataBuffer, 0,
                   (this.saveFBS).getBuffer().length);
-
-          //ToDo: debug use, will deleted later
-          LOG.warn("Richard-DEBUG: data fitting into memory and will be attached to event, no file created.");
         }
 
         out = null;
