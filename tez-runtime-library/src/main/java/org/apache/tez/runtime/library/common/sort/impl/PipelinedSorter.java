@@ -1,10 +1,10 @@
   /**
 * Licensed to the Apache Software Foundation (ASF) under one
-* or more contributor license agreements.  See the NOTICE file
+* or more contributor license agreements.  See the NOTICE pathSupplier
 * distributed with this work for additional information
-* regarding copyright ownership.  The ASF licenses this file
+* regarding copyright ownership.  The ASF licenses this pathSupplier
 * to you under the Apache License, Version 2.0 (the
-* "License"); you may not use this file except in compliance
+* "License"); you may not use this pathSupplier except in compliance
 * with the License.  You may obtain a copy of the License at
 *
 *     http://www.apache.org/licenses/LICENSE-2.0
@@ -77,7 +77,7 @@ public class PipelinedSorter extends ExternalSorter {
   private static final Logger LOG = LoggerFactory.getLogger(PipelinedSorter.class);
   
   /**
-   * The size of each record in the index file for the map-outputs.
+   * The size of each record in the index pathSupplier for the map-outputs.
    */
   public static final int MAP_OUTPUT_INDEX_RECORD_LENGTH = 24;
 
@@ -568,7 +568,7 @@ public class PipelinedSorter extends ExternalSorter {
         throw new IOInterruptedException(outputContext.getDestinationVertexName() + ": Interrupted while waiting for mergers to complete", e);
       }
 
-      // create spill file
+      // create spill pathSupplier
       final long size = capacity +
           + (partitions * APPROX_HEADER_LENGTH);
       final TezSpillRecord spillRec = new TezSpillRecord(partitions);
@@ -759,7 +759,7 @@ public class PipelinedSorter extends ExternalSorter {
             "numSpills: " + numSpills + ", finalOutputFile:" + finalOutputFile + ", finalIndexFile:"
                 + finalIndexFile);
       }
-      //The output stream for the final single output file
+      //The output stream for the final single output pathSupplier
       FSDataOutputStream finalOut = rfs.create(finalOutputFile, true, 4096);
       if (!SPILL_FILE_PERMS.equals(SPILL_FILE_PERMS.applyUMask(FsPermission.getUMask(conf)))) {
         rfs.setPermission(finalOutputFile, SPILL_FILE_PERMS);

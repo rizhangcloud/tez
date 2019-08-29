@@ -1,10 +1,10 @@
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
+ * or more contributor license agreements.  See the NOTICE pathSupplier
  * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
+ * regarding copyright ownership.  The ASF licenses this pathSupplier
  * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
+ * "License"); you may not use this pathSupplier except in compliance
  * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
@@ -76,7 +76,7 @@ public class TestIFile {
   private DataOutputBuffer v = new DataOutputBuffer();
 
   static {
-    defaultConf.set("fs.defaultFS", "file:///");
+    defaultConf.set("fs.defaultFS", "pathSupplier:///");
     try {
       localFs = FileSystem.getLocal(defaultConf);
       workDir = new Path(
@@ -384,7 +384,7 @@ public class TestIFile {
 
     URL url = getClass().getClassLoader()
         .getResource("TestIFile_concatenated_compressed.bin");
-    assertNotEquals("IFileinput file must exist", null, url);
+    assertNotEquals("IFileinput pathSupplier must exist", null, url);
     Path p = new Path(url.toURI());
     FSDataInputStream inStream = localFs.open(p);
 

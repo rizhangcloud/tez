@@ -1,10 +1,10 @@
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
+ * or more contributor license agreements.  See the NOTICE pathSupplier
  * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
+ * regarding copyright ownership.  The ASF licenses this pathSupplier
  * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
+ * "License"); you may not use this pathSupplier except in compliance
  * with the License.  You may obtain a copy of the License at
  * <p/>
  * http://www.apache.org/licenses/LICENSE-2.0
@@ -119,7 +119,7 @@ public class TestPipelinedSorter {
 
   public static Configuration getConf() {
     Configuration conf = new Configuration();
-    conf.set("fs.defaultFS", "file:///");
+    conf.set("fs.defaultFS", "pathSupplier:///");
     conf.set(CommonConfigurationKeys.FS_PERMISSIONS_UMASK_KEY, "077");
     //To enable PipelinedSorter
     conf.set(TezRuntimeConfiguration.TEZ_RUNTIME_SORTER_CLASS, SorterImpl.PIPELINED.name());
@@ -181,7 +181,7 @@ public class TestPipelinedSorter {
 
     writeData(sorter, 0, 1<<20);
 
-    // final merge is disabled. Final output file would not be populated in this case.
+    // final merge is disabled. Final output pathSupplier would not be populated in this case.
     assertTrue(sorter.finalOutputFile == null);
     TezCounter numShuffleChunks = outputContext.getCounters().findCounter(TaskCounter.SHUFFLE_CHUNK_COUNT);
 //    assertTrue(sorter.getNumSpills() == numShuffleChunks.getValue());
@@ -295,7 +295,7 @@ public class TestPipelinedSorter {
 
     writeData(sorter, 5, 1<<20);
 
-    // final merge is disabled. Final output file would not be populated in this case.
+    // final merge is disabled. Final output pathSupplier would not be populated in this case.
     assertTrue(sorter.finalOutputFile == null);
     TezCounter numShuffleChunks = outputContext.getCounters().findCounter(TaskCounter.SHUFFLE_CHUNK_COUNT);
     assertTrue(sorter.getNumSpills() == numShuffleChunks.getValue());
@@ -408,7 +408,7 @@ public class TestPipelinedSorter {
     sorter.flush();
     List<Event> events = sorter.close();
 
-    //final merge is disabled. Final output file would not be populated in this case.
+    //final merge is disabled. Final output pathSupplier would not be populated in this case.
     assertTrue(sorter.finalOutputFile == null);
     conf.setBoolean(TezRuntimeConfiguration.TEZ_RUNTIME_ENABLE_FINAL_MERGE_IN_OUTPUT, true);
     verify(outputContext, times(0)).sendEvents(any());

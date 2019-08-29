@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 import java.util.zip.Deflater;
 
 import com.google.common.collect.Lists;
@@ -294,17 +295,25 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
 
     if (numPartitions == 1 && !pipelinedShuffle) {
       //special case, where in only one partition is available.
-      finalOutPath = outputFileHandler.getOutputFileForWrite();
-      finalIndexPath = outputFileHandler.getOutputIndexFileForWrite(indexFileSizeEstimate);
+
       skipBuffers = true;
 
       if (dataViaEventsEnabled) {
-        /* the entrance to use the dataViaEvent */
-        writer = new Writer(conf, rfs, finalOutPath, keyClass, valClass,
+        // the entrance to use the dataViaEvent
+        writer = new Writer(conf, rfs, () -> {
+            try {
+                return outputFileHandler.getOutputFileForWrite();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }, keyClass, valClass,
                 codec, outputRecordsCounter, outputRecordBytesCounter, false, true,
                 dataViaEventsMaxSize);
+        //finalIndexPath = outputFileHandler.getOutputIndexFileForWrite(indexFileSizeEstimate);
       }
       else {
+        finalOutPath = outputFileHandler.getOutputFileForWrite();
+        finalIndexPath = outputFileHandler.getOutputIndexFileForWrite(indexFileSizeEstimate);
         writer = new IFile.Writer(conf, rfs, finalOutPath, keyClass, valClass,
             codec, outputRecordsCounter, outputRecordBytesCounter);
       }
@@ -762,6 +771,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
             TezIndexRecord rec = new TezIndexRecord(0, rawLen, compLen);
             TezSpillRecord sr = new TezSpillRecord(1);
             sr.putIndex(rec, 0);
+            finalIndexPath = outputFileHandler.getOutputIndexFileForWrite(indexFileSizeEstimate);
             sr.writeToFile(finalIndexPath, conf);
           }
 

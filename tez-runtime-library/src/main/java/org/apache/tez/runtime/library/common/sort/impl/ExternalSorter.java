@@ -1,10 +1,10 @@
 /**
 * Licensed to the Apache Software Foundation (ASF) under one
-* or more contributor license agreements.  See the NOTICE file
+* or more contributor license agreements.  See the NOTICE pathSupplier
 * distributed with this work for additional information
-* regarding copyright ownership.  The ASF licenses this file
+* regarding copyright ownership.  The ASF licenses this pathSupplier
 * to you under the Apache License, Version 2.0 (the
-* "License"); you may not use this file except in compliance
+* "License"); you may not use this pathSupplier except in compliance
 * with the License.  You may obtain a copy of the License at
 *
 *     http://www.apache.org/licenses/LICENSE-2.0
@@ -160,7 +160,7 @@ public abstract class ExternalSorter {
   protected final TezCounter additionalSpillBytesWritten;
   
   protected final TezCounter additionalSpillBytesRead;
-  // Number of spills written & consumed by the same task to generate the final file
+  // Number of spills written & consumed by the same task to generate the final pathSupplier
   protected final TezCounter numAdditionalSpills;
   // Number of files offered via shuffle-handler to consumers.
   protected final TezCounter numShuffleChunks;
@@ -260,7 +260,7 @@ public abstract class ExternalSorter {
     } else {
       this.ifileReadAheadLength = 0;
     }
-    this.ifileBufferSize = conf.getInt("io.file.buffer.size",
+    this.ifileBufferSize = conf.getInt("io.pathSupplier.buffer.size",
         TezRuntimeConfiguration.TEZ_RUNTIME_IFILE_BUFFER_SIZE_DEFAULT);
 
     

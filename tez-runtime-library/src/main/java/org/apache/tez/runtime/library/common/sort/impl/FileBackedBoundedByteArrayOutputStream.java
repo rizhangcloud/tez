@@ -1,10 +1,10 @@
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
+ * or more contributor license agreements.  See the NOTICE pathSupplier
  * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
+ * regarding copyright ownership.  The ASF licenses this pathSupplier
  * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
+ * "License"); you may not use this pathSupplier except in compliance
  * with the License.  You may obtain a copy of the License at
  * <p>
  * http://www.apache.org/licenses/LICENSE-2.0
@@ -18,35 +18,20 @@
 package org.apache.tez.runtime.library.common.sort.impl;
 
 import java.io.*;
-import java.nio.ByteBuffer;
-import java.util.Iterator;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
-import com.google.common.annotations.VisibleForTesting;
-
-import org.apache.hadoop.io.*;
 import org.apache.hadoop.util.DataChecksum;
-import org.apache.tez.runtime.library.common.writers.UnorderedPartitionedKVWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.tez.runtime.library.utils.BufferUtils;
 import org.apache.hadoop.io.compress.CodecPool;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.hadoop.io.compress.Compressor;
-import org.apache.hadoop.io.compress.Decompressor;
-import org.apache.hadoop.io.serializer.SerializationFactory;
-import org.apache.hadoop.io.serializer.Serializer;
-import org.apache.tez.common.counters.TezCounter;
-
-import org.apache.tez.runtime.library.common.sort.impl.IFileOutputStream;
 
 /**
  * <code>FileBackedBoundedByteArrayOutputStream</code> extends the <code> BoundedByteArrayOutputStream</code>
@@ -63,7 +48,7 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream {
 
     ByteArrayOutputStream out;
     FileSystem fs;
-    Path file;
+    Supplier<Path> pathSupplier;
     int headerLength;
     boolean bufferIsFull;
     FSDataOutputStream baseStream;
@@ -90,13 +75,13 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream {
     private boolean finished = false;
 
 
-    public FileBackedBoundedByteArrayOutputStream(ByteArrayOutputStream out, FileSystem.Statistics stats, FileSystem rfs,
-                                                  Path file, CompressionCodec codec, boolean rle, int bufferLimit,
-                                                  int headerLength) {
+    public FileBackedBoundedByteArrayOutputStream(ByteArrayOutputStream out, FileSystem.Statistics stats,
+                                                  FileSystem rfs, Supplier<Path> sFile, CompressionCodec codec,
+                                                  boolean rle, int bufferLimit, int headerLength) {
         this.bufferSize = bufferLimit;
         this.out = out;
         this.fs = rfs;
-        this.file = file;
+        this.pathSupplier = sFile;
         this.headerLength = headerLength;
         this.bufferIsFull = false;
         this.codec = codec;
@@ -110,7 +95,7 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream {
         }
         written = 0;
 
-        /* checksum initialization */
+        // checksum initialization
         sum = DataChecksum.newDataChecksum(DataChecksum.Type.CRC32,
                 Integer.MAX_VALUE);
         barray = new byte[sum.getChecksumSize()];
@@ -130,7 +115,7 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream {
                 written += len;
                 return;
             } else {
-                baseStream = fs.create(file);
+                baseStream = fs.create(pathSupplier.get());
                 this.rawOut = baseStream;
                 this.checksumOut = new IFileOutputStream(baseStream);
                 this.start = this.rawOut.getPos();
@@ -147,19 +132,19 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream {
                 }
             }
 
-            /* If the in memory buffer is full, switched to the file based approach，and
-            clone the data from the in memory buffer into the file based stream.
+            /* If the in memory buffer is full, switched to the pathSupplier based approach，and
+            clone the data from the in memory buffer into the pathSupplier based stream.
             Not necessary to compute the checksum for the data in the in memory buffer, because
             the in memory buffer will be cloned into the checksum based stream. */
             finished = true;
             this.out.flush();
 
-            /* clone the data from the in memory buffer into the file based stream */
+            /* clone the data from the in memory buffer into the pathSupplier based stream */
             byte[] inMemData = this.out.toByteArray();
             baseStream.write(inMemData, 0, this.headerLength);
             outputStream.write(inMemData, this.headerLength, inMemData.length-this.headerLength);
 
-            // write the data for which the in memory does not have enough space to the file based stream
+            // write the data for which the in memory does not have enough space to the pathSupplier based stream
             outputStream.write(b, off, len);
             bufferIsFull = true;
 

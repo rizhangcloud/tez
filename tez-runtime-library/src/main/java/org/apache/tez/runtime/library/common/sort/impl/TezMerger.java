@@ -1,10 +1,10 @@
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
+ * or more contributor license agreements.  See the NOTICE pathSupplier
  * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
+ * regarding copyright ownership.  The ASF licenses this pathSupplier
  * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
+ * "License"); you may not use this pathSupplier except in compliance
  * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
@@ -521,7 +521,7 @@ public class TezMerger {
                                         null : mergedMapOutputsCounter)));
       }
       
-      // Sort segments on file-lengths
+      // Sort segments on pathSupplier-lengths
       Collections.sort(segments, segmentComparator); 
     }
     
@@ -583,7 +583,7 @@ public class TezMerger {
         if (hasNext == null) {
           /**
            * hasNext can be null during first iteration & prevKey is initialized here.
-           * In cases of NO_KEY/NEW_KEY, we readjust the queue later. If new segment/file is found
+           * In cases of NO_KEY/NEW_KEY, we readjust the queue later. If new segment/pathSupplier is found
            * during this process, we need to compare keys for RLE across segment boundaries.
            * prevKey can't be empty at that time (e.g custom comparators)
            */
@@ -627,7 +627,7 @@ public class TezMerger {
     void compareKeyWithNextTopKey(Segment current) throws IOException {
       Segment nextTop = top();
       if (checkForSameKeys && nextTop != current) {
-        //we have a different file. Compare it with previous key
+        //we have a different pathSupplier. Compare it with previous key
         KeyValueBuffer nextKey = nextTop.getKey();
         int compare = compare(nextKey, prevKey);
         if (compare == 0) {
@@ -734,7 +734,7 @@ public class TezMerger {
       }
       
       //create the MergeStreams from the sorted map created in the constructor
-      //and dump the final output to a file
+      //and dump the final output to a pathSupplier
       do {
         //get the factor for this pass of merge. We assume in-memory segments
         //are the first entries in the segment list and that the pass factor

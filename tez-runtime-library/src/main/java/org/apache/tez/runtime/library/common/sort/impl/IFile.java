@@ -1,10 +1,10 @@
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
+ * or more contributor license agreements.  See the NOTICE pathSupplier
  * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
+ * regarding copyright ownership.  The ASF licenses this pathSupplier
  * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
+ * "License"); you may not use this pathSupplier except in compliance
  * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
@@ -20,14 +20,11 @@ package org.apache.tez.runtime.library.common.sort.impl;
 import java.io.*;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.zip.CRC32;
+import java.util.function.Supplier;
 
 import com.google.common.annotations.VisibleForTesting;
 
-import com.google.common.base.Preconditions;
-import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.io.*;
-import org.apache.tez.common.io.NonSyncDataOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -45,9 +42,6 @@ import org.apache.hadoop.io.compress.Decompressor;
 import org.apache.hadoop.io.serializer.SerializationFactory;
 import org.apache.hadoop.io.serializer.Serializer;
 import org.apache.tez.common.counters.TezCounter;
-import org.apache.tez.dag.api.TezConfiguration;
-
-import org.apache.tez.runtime.library.common.sort.impl.FileBackedBoundedByteArrayOutputStream;
 
 /**
  * <code>IFile</code> is the simple <key-len, value-len, key, value> format
@@ -79,16 +73,13 @@ public class IFile {
   public static class Writer {
     protected DataOutputStream out;
     protected FileBackedBoundedByteArrayOutputStream saveFBS;
-
     boolean ownOutputStream = false;
     long start = 0;
     FSDataOutputStream rawOut;
     final AtomicBoolean closed = new AtomicBoolean(false);
-
     CompressionOutputStream compressedOut;
     Compressor compressor;
     boolean compressOutput = false;
-
     long decompressedBytesWritten = 0;
     long compressedBytesWritten = 0;
 
@@ -98,7 +89,6 @@ public class IFile {
     private long totalKeySaving = 0; //number of keys saved due to multi KV writes + RLE
     private final TezCounter writtenRecordsCounter;
     private final TezCounter serializedUncompressedBytes;
-
     IFileOutputStream checksumOut;
 
     boolean closeSerializers = false;
@@ -123,7 +113,6 @@ public class IFile {
     // store the in memory buffer data that is going to be placed in payload
     byte[] tmpDataBuffer;
 
-
     public Writer(Configuration conf, FileSystem fs, Path file,
                   Class keyClass, Class valueClass,
                   CompressionCodec codec,
@@ -146,7 +135,6 @@ public class IFile {
       this(conf, outputStream, keyClass, valueClass, codec, writesCounter,
               serializedBytesCounter, false);
     }
-
 
     public Writer(Configuration conf, FSDataOutputStream outputStream,
                   Class keyClass, Class valueClass,
@@ -187,11 +175,10 @@ public class IFile {
       }
     }
 
-
     /* The constructor to be used if the dataViaEvent is enabled.
-     * It receives fs, and file, but does not create file stream right away.
+     * It receives fs, and pathSupplier, but does not create pathSupplier stream right away.
      */
-    public Writer(Configuration conf, FileSystem rfs, Path file,
+    public Writer(Configuration conf, FileSystem rfs, Supplier<Path> sFile,
                   Class keyClass, Class valueClass,
                   CompressionCodec codec, TezCounter writesCounter, TezCounter serializedBytesCounter,
                   boolean rle, boolean dataViaEventUsed, int dataViaEventsMaxSize) throws IOException {
@@ -201,11 +188,10 @@ public class IFile {
       this.rle = rle;
 
       ByteArrayOutputStream memStream = new ByteArrayOutputStream(dataViaEventsMaxSize);
-      saveFBS =new FileBackedBoundedByteArrayOutputStream(memStream, null, rfs, file, codec,
+      saveFBS =new FileBackedBoundedByteArrayOutputStream(memStream, null, rfs, sFile, codec,
               rle, dataViaEventsMaxSize, HEADER.length);
 
       this.out = new DataOutputStream(saveFBS);
-
       this.dataViaEvenEnabled = dataViaEventUsed;
 
       writeHeader(memStream);
@@ -238,7 +224,6 @@ public class IFile {
           return false;
     }
 
-
     public void close() throws IOException {
       if (closed.getAndSet(true)) {
         throw new IOException("Writer was already closed earlier");
@@ -263,7 +248,6 @@ public class IFile {
         //account for header bytes
         decompressedBytesWritten += HEADER.length;
 
-
         // Close the underlying stream iff we own it...
         if (ownOutputStream) {
           out.close();
@@ -279,7 +263,6 @@ public class IFile {
             }
             else {
               this.saveFBS.close();
-
             }
         }
 
@@ -319,10 +302,7 @@ public class IFile {
                   rleWritten + "; compressedLen=" + compressedBytesWritten + "; rawLen="
                   + decompressedBytesWritten);
         }
-
     }
-
-
 
     /**
      * Send key/value to be appended to IFile. To represent same key as previous
@@ -598,8 +578,8 @@ public class IFile {
      * Construct an IFile Reader.
      *
      * @param fs  FileSystem
-     * @param file Path of the file to be opened. This file should have
-     *             checksum bytes for the data at the end of the file.
+     * @param file Path of the pathSupplier to be opened. This pathSupplier should have
+     *             checksum bytes for the data at the end of the pathSupplier.
      * @param codec codec
      * @param readsCounter Counter for records read from disk
      * @throws IOException
@@ -827,11 +807,11 @@ public class IFile {
     }
 
     /**
-     * Reset key length and value length for next record in the file
+     * Reset key length and value length for next record in the pathSupplier
      *
      * @param dIn
      * @return true if key length and value length were set to the next
-     *         false if end of file (EOF) marker was reached
+     *         false if end of pathSupplier (EOF) marker was reached
      * @throws IOException
      */
     protected boolean positionToNextRecord(DataInput dIn) throws IOException {

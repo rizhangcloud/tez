@@ -1,10 +1,10 @@
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
+ * or more contributor license agreements.  See the NOTICE pathSupplier
  * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
+ * regarding copyright ownership.  The ASF licenses this pathSupplier
  * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
+ * "License"); you may not use this pathSupplier except in compliance
  * with the License.  You may obtain a copy of the License at
  * <p/>
  * http://www.apache.org/licenses/LICENSE-2.0
@@ -79,7 +79,7 @@ public class TestTezMerger {
   private MergeManager merger = mock(MergeManager.class);
 
   static {
-    defaultConf.set("fs.defaultFS", "file:///");
+    defaultConf.set("fs.defaultFS", "pathSupplier:///");
     try {
       localFs = FileSystem.getLocal(defaultConf);
       workDir = new Path(
@@ -105,10 +105,10 @@ public class TestTezMerger {
   @Test(timeout = 80000)
   public void testMerge() throws Exception {
     /**
-     * test with number of files, keys per file and mergefactor
+     * test with number of files, keys per pathSupplier and mergefactor
      */
 
-    //empty file
+    //empty pathSupplier
     merge(1, 0, 1);
     merge(100, 0, 5);
 
@@ -196,18 +196,18 @@ public class TestTezMerger {
     data.add("0");
     pathList.add(createIFileWithTextData(data));
 
-    //Second file with empty key
+    //Second pathSupplier with empty key
     data.clear();
     data.add("");
     pathList.add(createIFileWithTextData(data));
 
-    //Third file
+    //Third pathSupplier
     data.clear();
     data.add("0");
     data.add("0");
     pathList.add(createIFileWithTextData(data));
 
-    //Third file
+    //Third pathSupplier
     data.clear();
     data.add("1");
     data.add("2");
@@ -247,14 +247,14 @@ public class TestTezMerger {
     data.add("5");
     pathList.add(createIFileWithTextData(data));
 
-    //Second file with empty key
+    //Second pathSupplier with empty key
     data.clear();
     data.add("2");
     data.add("6");
     data.add("7");
     pathList.add(createIFileWithTextData(data));
 
-    //Third file
+    //Third pathSupplier
     data.clear();
     data.add("3");
     data.add("8");
@@ -289,13 +289,13 @@ public class TestTezMerger {
     LOG.info("Test with custom comparator with RLE spanning across segment boundaries");
 
     //Test with 2 files, where the RLE keys can span across files
-    //First file
+    //First pathSupplier
     data.clear();
     data.add("0");
     data.add("0");
     pathList.add(createIFileWithTextData(data));
 
-    //Second file
+    //Second pathSupplier
     data.clear();
     data.add("0");
     data.add("1");
@@ -329,21 +329,21 @@ public class TestTezMerger {
     LOG.info("Test with custom comparator with mixed set of segments (empty, non-empty etc)");
 
     //Test with 2 files, where the RLE keys can span across files
-    //First file
+    //First pathSupplier
     data.clear();
     data.add("0");
     pathList.add(createIFileWithTextData(data));
 
-    //Second file; empty file
+    //Second pathSupplier; empty pathSupplier
     data.clear();
     pathList.add(createIFileWithTextData(data));
 
-    //Third file with empty key
+    //Third pathSupplier with empty key
     data.clear();
     data.add("");
     pathList.add(createIFileWithTextData(data));
 
-    //Fourth file with repeated keys
+    //Fourth pathSupplier with repeated keys
     data.clear();
     data.add("0");
     data.add("0");
@@ -378,15 +378,15 @@ public class TestTezMerger {
     LOG.info("Test with custom comparator 2 files one containing RLE and also other segment "
         + "starting with same key");
 
-    //Test with 2 files, same keys in middle of file
-    //First file
+    //Test with 2 files, same keys in middle of pathSupplier
+    //First pathSupplier
     data.clear();
     data.add("1");
     data.add("2");
     data.add("2");
     pathList.add(createIFileWithTextData(data));
 
-    //Second file
+    //Second pathSupplier
     data.clear();
     data.add("2");
     data.add("3");
@@ -417,21 +417,21 @@ public class TestTezMerger {
     LOG.info(
         "Test with custom comparator 3 files with RLE (starting keys) spanning across boundaries");
 
-    //Test with 3 files, same keys in middle of file
-    //First file
+    //Test with 3 files, same keys in middle of pathSupplier
+    //First pathSupplier
     data.clear();
     data.add("0");
     data.add("1");
     data.add("1");
     pathList.add(createIFileWithTextData(data));
 
-    //Second file
+    //Second pathSupplier
     data.clear();
     data.add("0");
     data.add("1");
     pathList.add(createIFileWithTextData(data));
 
-    //Third file
+    //Third pathSupplier
     data.clear();
     data.add("0");
     data.add("1");
@@ -467,17 +467,17 @@ public class TestTezMerger {
         "Test with custom comparator 3 files with RLE (starting keys) spanning across boundaries");
 
     //Test with 3 files
-    //First file
+    //First pathSupplier
     data.clear();
     data.add("0");
     pathList.add(createIFileWithTextData(data));
 
-    //Second file
+    //Second pathSupplier
     data.clear();
     data.add("0");
     pathList.add(createIFileWithTextData(data));
 
-    //Third file
+    //Third pathSupplier
     data.clear();
     data.add("1");
     pathList.add(createIFileWithTextData(data));
@@ -503,13 +503,13 @@ public class TestTezMerger {
 
     LOG.info("Test with custom comparator");
 
-    //Test with 3 files, same keys in middle of file
-    //First file
+    //Test with 3 files, same keys in middle of pathSupplier
+    //First pathSupplier
     data.clear();
     data.add("0");
     pathList.add(createIFileWithTextData(data));
 
-    //Second file
+    //Second pathSupplier
     data.clear();
     data.add("0");
     data.add("1");
@@ -538,16 +538,16 @@ public class TestTezMerger {
 
     LOG.info("Test with custom comparator where all files are empty");
 
-    //First file
+    //First pathSupplier
     pathList.add(createIFileWithTextData(data));
 
-    //Second file
+    //Second pathSupplier
     pathList.add(createIFileWithTextData(data));
 
-    //Third file
+    //Third pathSupplier
     pathList.add(createIFileWithTextData(data));
 
-    //Fourth file
+    //Fourth pathSupplier
     pathList.add(createIFileWithTextData(data));
 
     TezRawKeyValueIterator records = merge(pathList, new CustomComparator());

@@ -1,10 +1,10 @@
 /**
 * Licensed to the Apache Software Foundation (ASF) under one
-* or more contributor license agreements.  See the NOTICE file
+* or more contributor license agreements.  See the NOTICE pathSupplier
 * distributed with this work for additional information
-* regarding copyright ownership.  The ASF licenses this file
+* regarding copyright ownership.  The ASF licenses this pathSupplier
 * to you under the Apache License, Version 2.0 (the
-* "License"); you may not use this file except in compliance
+* "License"); you may not use this pathSupplier except in compliance
 * with the License.  You may obtain a copy of the License at
 *
 *     http://www.apache.org/licenses/LICENSE-2.0
@@ -26,9 +26,9 @@ public class TezIndexRecord {
   public TezIndexRecord() { }
 
   /**
-   * @param startOffset start offset within the data file
+   * @param startOffset start offset within the data pathSupplier
    * @param rawLength raw data length - typically uncompressed
-   * @param partLength actual data length in file - factors in checksums and compression
+   * @param partLength actual data length in pathSupplier - factors in checksums and compression
    */
   public TezIndexRecord(long startOffset, long rawLength, long partLength) {
     this.startOffset = startOffset;
