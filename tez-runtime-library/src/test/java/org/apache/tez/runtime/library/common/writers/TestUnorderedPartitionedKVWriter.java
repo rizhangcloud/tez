@@ -276,7 +276,7 @@ public class TestUnorderedPartitionedKVWriter {
     baseTest(0, 10, null, shouldCompress, -1, 0);
   }
 
-  @Test(timeout = 100000)
+  @Test(timeout = 10000)
   public void testNoRecords_SinglePartition() throws IOException, InterruptedException {
     // skipBuffers
     baseTest(0, 1, null, shouldCompress, -1, 0);
@@ -318,7 +318,7 @@ public class TestUnorderedPartitionedKVWriter {
     textTest(100, 10, 2048, 10, 10, 10, false, true);
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 10000000)
   public void testRandomTextWithoutFinalMerge() throws IOException, InterruptedException {
     textTest(100, 10, 2048, 0, 0, 0, false, false);
   }
@@ -1194,7 +1194,6 @@ public class TestUnorderedPartitionedKVWriter {
     long fileOutputBytes = fileOutputBytesCounter.getValue();
     if (numRecordsWritten > 0) {
       assertTrue(fileOutputBytes > 0);
-
       if ((!shouldCompress) && (!dataViaEventEnabled)) {
         assertTrue(fileOutputBytes > outputRecordBytesCounter.getValue());
       }

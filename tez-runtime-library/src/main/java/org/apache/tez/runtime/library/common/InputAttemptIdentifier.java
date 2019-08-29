@@ -68,12 +68,10 @@ public class InputAttemptIdentifier {
     this.shared = shared;
     this.fetchTypeInfo = (byte)fetchTypeInfo.ordinal();
     this.spillEventId = spillEventId;
-
     if (pathComponent != null && !pathComponent.startsWith(PATH_PREFIX)) {
       throw new TezUncheckedException(
           "Path component must start with: " + PATH_PREFIX + " " + this);
     }
-
   }
 
   public int getInputIdentifier() {

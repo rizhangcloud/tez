@@ -86,9 +86,7 @@ import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.protobuf.ByteString;
 import org.apache.tez.runtime.library.common.sort.impl.FileBackedBoundedByteArrayOutputStream;
-
 import static org.apache.tez.runtime.library.common.sort.impl.TezSpillRecord.SPILL_FILE_PERMS;
-
 import org.apache.hadoop.io.IOUtils;
 
 
@@ -138,7 +136,6 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
   private boolean dataInMemBuffer = false;
   private boolean dataViaEventsEnabled;
   private int dataViaEventsMaxSize;
-
 
   static final ThreadLocal<Deflater> deflater = new ThreadLocal<Deflater>() {
 
@@ -202,7 +199,6 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
   private final long indexFileSizeEstimate;
 
   private List<WrappedBuffer> filledBuffers = new ArrayList<>();
-
 
   public UnorderedPartitionedKVWriter(OutputContext outputContext, Configuration conf,
       int numOutputs, long availableMemoryBytes) throws IOException {
@@ -293,7 +289,6 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
 
     outputLargeRecordsCounter = outputContext.getCounters().findCounter(
         TaskCounter.OUTPUT_LARGE_RECORDS);
-
 
     indexFileSizeEstimate = numPartitions * Constants.MAP_OUTPUT_INDEX_RECORD_LENGTH;
 
@@ -855,7 +850,6 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
     }
   }
 
-
   private BitSet getEmptyPartitions(int[] recordsPerPartition) {
     Preconditions.checkArgument(recordsPerPartition != null, "records per partition can not be null");
     BitSet emptyPartitions = new BitSet();
@@ -914,7 +908,6 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
     return CompositeDataMovementEvent.create(0, numPartitions, payload);
   }
 
-
   private Event generateDMEvent2(boolean addSpillDetails, int spillId,
                                 boolean isLastSpill, String pathComponent, BitSet emptyPartitions, byte[] data)
           throws IOException {
@@ -958,9 +951,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
     payloadBuilder.setPathComponent("attempttmp");
 
     return CompositeDataMovementEvent.create(0, numPartitions, payload);
-
   }
-
 
   private void cleanupCurrentBuffer() {
     currentBuffer.cleanup();

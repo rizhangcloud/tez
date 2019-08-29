@@ -720,7 +720,6 @@ public class ShuffleManager implements FetcherCallback {
     lastEventReceived.setValue(relativeTime);
   }
 
-
   void obsoleteKnownInput(InputAttemptIdentifier srcAttemptIdentifier) {
     obsoletedInputs.add(srcAttemptIdentifier);
     // TODO NEWTEZ Maybe inform the fetcher about this. For now, this is used during the initial fetch list construction.

@@ -58,7 +58,7 @@ import org.apache.tez.runtime.library.common.sort.impl.IFileOutputStream;
 @InterfaceAudience.Private
 @InterfaceStability.Unstable
 
-public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*extends FSDataOutputStream*/ {
+public class FileBackedBoundedByteArrayOutputStream extends OutputStream {
     private static final Logger LOG = LoggerFactory.getLogger(FileBackedBoundedByteArrayOutputStream.class);
 
     ByteArrayOutputStream out;
@@ -82,7 +82,6 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
     private int bufferSize = 0;
     private int written;
     private byte[] singleByte = new byte[1];
-
     private final DataChecksum sum;
     private byte[] barray;
     private byte[] buffer;
@@ -119,7 +118,6 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
         offset = 0;
 
     }
-
 
     @Override
     public synchronized void write(byte[] b, int off, int len) throws IOException {
@@ -168,7 +166,6 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
             this.out.close();
         }
     }
-
 
     /**
      * Writes the specified byte to this output stream.
@@ -228,7 +225,6 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
         return codec;
     }
 
-
     /**
      * Finishes writing data to the output stream, by writing
      * the checksum bytes to the end. The underlying stream is not closed.
@@ -269,5 +265,4 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream /*exten
         System.arraycopy(b, off, buffer, offset, len);
         offset += len;
     }
-
 }

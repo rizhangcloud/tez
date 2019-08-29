@@ -93,7 +93,7 @@ public class TestUnorderedKVOutput2 {
     }
   }
 
-  @Test(timeout = 1000000)
+  @Test(timeout = 10000)
   public void testClose() throws Exception {
     OutputContext outputContext = OutputTestHelpers.createOutputContext(conf, workingDir);
     int numPartitions = 1;
