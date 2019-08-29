@@ -1,10 +1,10 @@
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE pathSupplier
+ * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this pathSupplier
+ * regarding copyright ownership.  The ASF licenses this file
  * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this pathSupplier except in compliance
+ * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
@@ -176,7 +176,7 @@ public class IFile {
     }
 
     /* The constructor to be used if the dataViaEvent is enabled.
-     * It receives fs, and pathSupplier, but does not create pathSupplier stream right away.
+     * It receives fs, and file, but does not create file stream right away.
      */
     public Writer(Configuration conf, FileSystem rfs, Supplier<Path> sFile,
                   Class keyClass, Class valueClass,
@@ -578,8 +578,8 @@ public class IFile {
      * Construct an IFile Reader.
      *
      * @param fs  FileSystem
-     * @param file Path of the pathSupplier to be opened. This pathSupplier should have
-     *             checksum bytes for the data at the end of the pathSupplier.
+     * @param file Path of the file to be opened. This file should have
+     *             checksum bytes for the data at the end of the file.
      * @param codec codec
      * @param readsCounter Counter for records read from disk
      * @throws IOException
@@ -807,11 +807,11 @@ public class IFile {
     }
 
     /**
-     * Reset key length and value length for next record in the pathSupplier
+     * Reset key length and value length for next record in the file
      *
      * @param dIn
      * @return true if key length and value length were set to the next
-     *         false if end of pathSupplier (EOF) marker was reached
+     *         false if end of file (EOF) marker was reached
      * @throws IOException
      */
     protected boolean positionToNextRecord(DataInput dIn) throws IOException {

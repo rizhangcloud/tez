@@ -1,10 +1,10 @@
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE pathSupplier
+ * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this pathSupplier
+ * regarding copyright ownership.  The ASF licenses this file
  * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this pathSupplier except in compliance
+ * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
@@ -44,8 +44,8 @@ import org.apache.hadoop.util.DataChecksum;
 public class IFileInputStream extends InputStream {
   
   private final InputStream in; //The input stream to be verified for checksum.
-  private final FileDescriptor inFd; // the pathSupplier descriptor, if it is known
-  private final long length; //The total length of the input pathSupplier
+  private final FileDescriptor inFd; // the file descriptor, if it is known
+  private final long length; //The total length of the input file
   private final long dataLength;
   private DataChecksum sum;
   private long currentOffset = 0;

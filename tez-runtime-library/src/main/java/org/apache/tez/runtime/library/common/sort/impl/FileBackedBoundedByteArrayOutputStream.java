@@ -1,10 +1,10 @@
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE pathSupplier
+ * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this pathSupplier
+ * regarding copyright ownership.  The ASF licenses this file
  * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this pathSupplier except in compliance
+ * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  * <p>
  * http://www.apache.org/licenses/LICENSE-2.0
@@ -132,19 +132,19 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream {
                 }
             }
 
-            /* If the in memory buffer is full, switched to the pathSupplier based approach，and
-            clone the data from the in memory buffer into the pathSupplier based stream.
+            /* If the in memory buffer is full, switched to the file based approach，and
+            clone the data from the in memory buffer into the file based stream.
             Not necessary to compute the checksum for the data in the in memory buffer, because
             the in memory buffer will be cloned into the checksum based stream. */
             finished = true;
             this.out.flush();
 
-            /* clone the data from the in memory buffer into the pathSupplier based stream */
+            /* clone the data from the in memory buffer into the file based stream */
             byte[] inMemData = this.out.toByteArray();
             baseStream.write(inMemData, 0, this.headerLength);
             outputStream.write(inMemData, this.headerLength, inMemData.length-this.headerLength);
 
-            // write the data for which the in memory does not have enough space to the pathSupplier based stream
+            // write the data for which the in memory does not have enough space to the file based stream
             outputStream.write(b, off, len);
             bufferIsFull = true;
 
