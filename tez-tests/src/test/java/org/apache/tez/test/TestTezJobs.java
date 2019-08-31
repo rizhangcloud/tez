@@ -105,7 +105,7 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
+import org.apache.tez.examples.BroadcastJoinExample;
 
 /**
  * Tests for Tez example jobs
@@ -592,6 +592,64 @@ public class TestTezJobs {
     }
   }
 
+  /**
+   * test whole {@link HashJoinExample} pipeline as following: <br>
+   * {@link JoinDataGen} -> {@link HashJoinExample} -> {@link JoinValidate}
+   * @throws Exception
+   */
+  @Test(timeout = 120000)
+  public void testBroadcastJoinExampleWithDataViaEvent() throws Exception {
+
+    Path testDir = new Path("/tmp/testHashJoinExample");
+    Path stagingDirPath = new Path("/tmp/tez-staging-dir");
+    remoteFs.mkdirs(stagingDirPath);
+    remoteFs.mkdirs(testDir);
+
+    Path dataPath1 = new Path(testDir, "inPath1");
+    Path dataPath2 = new Path(testDir, "inPath2");
+    Path expectedOutputPath = new Path(testDir, "expectedOutputPath");
+    Path outPath = new Path(testDir, "outPath");
+
+
+    TezConfiguration tezConf = new TezConfiguration(mrrTezCluster.getConfig());
+    tezConf.set(TezConfiguration.TEZ_AM_STAGING_DIR, stagingDirPath.toString());
+
+    //turn on the dataViaEvent
+    tezConf.setBoolean(TezRuntimeConfiguration.TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_ENABLED, true);
+
+    TezClient tezSession = null;
+    try {
+      tezSession = TezClient.create("BroadcastJoinExampleSession", tezConf, true);
+      tezSession.start();
+
+      JoinDataGen dataGen = new JoinDataGen();
+      String[] dataGenArgs = new String[] {
+              "-counter",
+              dataPath1.toString(), "1048576", dataPath2.toString(), "8",
+              expectedOutputPath.toString(), "2" };
+      assertEquals(0, dataGen.run(tezConf, dataGenArgs, tezSession));
+
+      BroadcastJoinExample joinExample = new BroadcastJoinExample();
+      String[] args = new String[] {
+              dataPath1.toString(), dataPath2.toString(), "2", outPath.toString(),
+              "doBroadcast"};
+
+      assertEquals(0, joinExample.run(tezConf, args, tezSession));
+
+      JoinValidate joinValidate = new JoinValidate();
+      String[] validateArgs = new String[] {
+              "-counter", expectedOutputPath.toString(), outPath.toString(), "3" };
+      assertEquals(0, joinValidate.run(tezConf, validateArgs, tezSession));
+
+      //TODO: debug, should delete
+      LOG.info("finish testBroadcastJoinExampleWithDataViaEvent");
+
+    } finally {
+      if (tezSession != null) {
+        tezSession.stop();
+      }
+    }
+  }
 
 
   /**

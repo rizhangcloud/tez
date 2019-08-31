@@ -204,6 +204,9 @@ public class ShuffleInputEventHandlerImpl implements ShuffleEventHandler {
               dataProto.getCompressedLength(), srcAttemptIdentifier);
       moveDataToFetchedInput(dataProto, fetchedInput, hostIdentifier);
       shuffleManager.addCompletedInputWithData(srcAttemptIdentifier, fetchedInput);
+
+      //ToDo debug use
+      LOG.warn("dataviaevent: Got the data through event payload from  " + srcAttemptIdentifier);
     } else {
       shuffleManager.addKnownInput(shufflePayload.getHost(), shufflePayload.getPort(), srcAttemptIdentifier, srcIndex);
     }

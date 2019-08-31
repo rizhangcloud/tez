@@ -121,12 +121,18 @@ public class IFile {
       this(conf, fs.create(file), keyClass, valueClass, codec,
               writesCounter, serializedBytesCounter);
       ownOutputStream = true;
+
+      //Todo debug use, should delete
+      LOG.info("dataviavent: first writer constructor");
     }
 
     protected Writer(TezCounter writesCounter, TezCounter serializedBytesCounter, boolean rle) {
       writtenRecordsCounter = writesCounter;
       serializedUncompressedBytes = serializedBytesCounter;
       this.rle = rle;
+
+      //Todo debug use, should delete
+      LOG.info("dataviavent: second writer constructor");
     }
 
     public Writer(Configuration conf, FSDataOutputStream outputStream,
@@ -134,6 +140,9 @@ public class IFile {
                   TezCounter serializedBytesCounter) throws IOException {
       this(conf, outputStream, keyClass, valueClass, codec, writesCounter,
               serializedBytesCounter, false);
+
+      //Todo debug use, should delete
+      LOG.info("dataviavent: third writer constructor");
     }
 
     public Writer(Configuration conf, FSDataOutputStream outputStream,
@@ -173,6 +182,10 @@ public class IFile {
       } else {
         this.closeSerializers = false;
       }
+
+      //Todo debug use, should delete
+      LOG.info("dataviavent: third writer constructor");
+
     }
 
     /* The constructor to be used if the dataViaEvent is enabled.
@@ -207,6 +220,10 @@ public class IFile {
       } else {
         this.closeSerializers = false;
       }
+
+
+      //Todo debug use, should delete
+      LOG.info("dataviavent: forth writer constructor");
     }
 
     protected void writeHeader(OutputStream outputStream) throws IOException {
@@ -302,6 +319,9 @@ public class IFile {
                   rleWritten + "; compressedLen=" + compressedBytesWritten + "; rawLen="
                   + decompressedBytesWritten);
         }
+
+      //Todo debug use, should delete
+      LOG.info("dataviavent: IFile.close");
     }
 
     /**

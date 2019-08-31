@@ -800,6 +800,9 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
             eventList.add(generateDMEvent2(false, -1, true,
                     outputContext.getUniqueIdentifier(), emptyPartitions,
                     writer.getTmpDataBuffer()));
+
+            //Todo debug use, should delete
+            LOG.info("dataviavent: UnorderPartitionedKVWriter.close: data fits into memory");
           }
 
           return eventList;
@@ -959,6 +962,10 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
 
     ByteBuffer payload = payloadBuilder.build().toByteString().asReadOnlyByteBuffer();
     payloadBuilder.setPathComponent("attempttmp");
+
+
+    //Todo debug use, should delete
+    LOG.info("dataviavent: generateDMEvent2");
 
     return CompositeDataMovementEvent.create(0, numPartitions, payload);
   }

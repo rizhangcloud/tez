@@ -102,6 +102,9 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream {
         buffer = new byte[4096];
         offset = 0;
 
+
+        //Todo debug use, should delete
+        LOG.info("dataviavent: FileBackedBoundedByteArrayOutputStream constructor");
     }
 
     @Override
@@ -115,6 +118,10 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream {
                 written += len;
                 return;
             } else {
+
+                //Todo debug use, should delete
+                LOG.info("dataviavent: file is created by fs.create");
+
                 baseStream = fs.create(pathSupplier.get());
                 this.rawOut = baseStream;
                 this.checksumOut = new IFileOutputStream(baseStream);
@@ -149,6 +156,10 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream {
             bufferIsFull = true;
 
             this.out.close();
+
+            //Todo debug use, should delete
+            LOG.info("dataviavent: in memory buffer is full");
+
         }
     }
 
