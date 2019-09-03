@@ -25,6 +25,7 @@ import java.util.Random;
 import java.util.Set;
 
 import org.apache.hadoop.io.IntWritable;
+import org.apache.tez.runtime.library.common.sort.impl.IFile;
 import org.apache.tez.runtime.library.output.UnorderedKVOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -236,6 +236,10 @@ public class HashJoinExample extends TezExampleBase {
               .setFromConfiguration(tezConf)
               .build();
       hashSideEdgeProperty = broadcastConf.createDefaultBroadcastEdgeProperty();
+
+      //Todo debug use, should delete
+      LOG.info("dataviaevent: hashSideEdgeProperty is:  " + hashSideEdgeProperty.toString());
+
     } else {
       /**
        * The hash side is also being partitioned into fragments with the same

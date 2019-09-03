@@ -74,6 +74,7 @@ import org.apache.tez.runtime.library.common.sort.impl.TezSpillRecord;
 import org.apache.tez.runtime.library.common.shuffle.ShuffleUtils;
 import org.apache.tez.runtime.library.shuffle.impl.ShuffleUserPayloads;
 import org.apache.tez.runtime.library.shuffle.impl.ShuffleUserPayloads.DataMovementEventPayloadProto;
+import org.eclipse.jetty.util.log.Log;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -298,6 +299,10 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
 
       skipBuffers = true;
 
+
+      //Todo debug use, should delete
+      LOG.info("dataviaevent: UnorderedPartitionedKVWriter:before select the correct writer");
+
       if (dataViaEventsEnabled) {
         // the entrance to use the dataViaEvent
         writer = new Writer(conf, rfs, () -> {
@@ -310,12 +315,18 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
                 codec, outputRecordsCounter, outputRecordBytesCounter, false, true,
                 dataViaEventsMaxSize);
         //finalIndexPath = outputFileHandler.getOutputIndexFileForWrite(indexFileSizeEstimate);
+
+        //Todo debug use, should delete
+        LOG.info("dataviaevent: UnorderedPartitionedKVWriter: dataViaEvent is enabled");
       }
       else {
         finalOutPath = outputFileHandler.getOutputFileForWrite();
         finalIndexPath = outputFileHandler.getOutputIndexFileForWrite(indexFileSizeEstimate);
         writer = new IFile.Writer(conf, rfs, finalOutPath, keyClass, valClass,
             codec, outputRecordsCounter, outputRecordBytesCounter);
+
+        //Todo debug use, should delete
+        LOG.info("dataviaevent: UnorderedPartitionedKVWriter: dataViaEvent is not enabled");
       }
 
       if ((!SPILL_FILE_PERMS.equals(SPILL_FILE_PERMS.applyUMask(FsPermission.getUMask(conf))))
