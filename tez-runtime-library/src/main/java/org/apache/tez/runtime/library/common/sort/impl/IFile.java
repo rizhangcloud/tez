@@ -301,20 +301,6 @@ public class IFile {
         //update the number of bytes that is transmit via event
         if(this.dataViaEventCounter != null) {
           this.dataViaEventCounter.increment((this.saveFBS).getBuffer().length);
-          LOG.info("dataviaevent: total bytes sent via data event:  " +this.dataViaEventCounter.getValue());
-
-          //start debug
-          String pid = System.getenv().get("JVM_PID");
-          LOG.info("dataviaevent: debug pid is " + pid);
-          int debugSleepTime = 300000;
-          try {
-            LOG.info("Sleeping for {} ms before shutting down", debugSleepTime);
-            Thread.sleep(debugSleepTime);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
-          //end debug
-
         }
       }
 
@@ -330,8 +316,6 @@ public class IFile {
                 rleWritten + "; compressedLen=" + compressedBytesWritten + "; rawLen="
                 + decompressedBytesWritten);
       }
-      //Todo debug use, should delete
-      LOG.info("dataviavent: IFile.close");
     }
 
     /**

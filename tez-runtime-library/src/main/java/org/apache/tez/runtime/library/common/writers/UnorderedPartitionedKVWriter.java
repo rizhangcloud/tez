@@ -228,10 +228,6 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
             TezRuntimeConfiguration.TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_MAX_SIZE,
             TezRuntimeConfiguration.TEZ_RUNTIME_TRANSFER_DATA_VIA_EVENTS_MAX_SIZE_DEFAULT);
 
-    LOG.info(this.getClass().getSimpleName() + " running with params -> "
-            + "dataViaEventsEnabled: " + dataViaEventsEnabled
-            + ", dataViaEventsMaxSize: " + dataViaEventsMaxSize);
-
     if (availableMemoryBytes == 0) {
       Preconditions.checkArgument(((numPartitions == 1) && !pipelinedShuffle), "availableMemory "
           + "can be set to 0 only when numPartitions=1 and " + TezRuntimeConfiguration
@@ -310,8 +306,6 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
         }, keyClass, valClass,
                 codec, outputRecordsCounter, outputRecordBytesCounter, false, true,
                 dataViaEventsMaxSize, dataViaEventSize);
-        //Todo debug use, should delete
-        LOG.info("dataviaevent: UnorderedPartitionedKVWriter: dataViaEvent is enabled");
       }
       else {
         finalOutPath = outputFileHandler.getOutputFileForWrite();
