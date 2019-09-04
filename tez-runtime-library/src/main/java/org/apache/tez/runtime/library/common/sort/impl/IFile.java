@@ -25,6 +25,7 @@ import java.util.function.Supplier;
 import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.hadoop.io.*;
+import org.apache.tez.dag.api.TezConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -89,6 +90,7 @@ public class IFile {
     private long totalKeySaving = 0; //number of keys saved due to multi KV writes + RLE
     private final TezCounter writtenRecordsCounter;
     private final TezCounter serializedUncompressedBytes;
+    private final TezCounter dataViaEventCounter;
     IFileOutputStream checksumOut;
 
     boolean closeSerializers = false;
@@ -121,9 +123,6 @@ public class IFile {
       this(conf, fs.create(file), keyClass, valueClass, codec,
               writesCounter, serializedBytesCounter);
       ownOutputStream = true;
-
-      //Todo debug use, should delete
-      LOG.info("dataviavent: first writer constructor");
     }
 
     protected Writer(TezCounter writesCounter, TezCounter serializedBytesCounter, boolean rle) {
@@ -131,8 +130,7 @@ public class IFile {
       serializedUncompressedBytes = serializedBytesCounter;
       this.rle = rle;
 
-      //Todo debug use, should delete
-      LOG.info("dataviavent: second writer constructor");
+      this.dataViaEventCounter = null;
     }
 
     public Writer(Configuration conf, FSDataOutputStream outputStream,
@@ -140,9 +138,6 @@ public class IFile {
                   TezCounter serializedBytesCounter) throws IOException {
       this(conf, outputStream, keyClass, valueClass, codec, writesCounter,
               serializedBytesCounter, false);
-
-      //Todo debug use, should delete
-      LOG.info("dataviavent: third writer constructor");
     }
 
     public Writer(Configuration conf, FSDataOutputStream outputStream,
@@ -155,6 +150,8 @@ public class IFile {
       this.checksumOut = new IFileOutputStream(outputStream);
       this.start = this.rawOut.getPos();
       this.rle = rle;
+      this.dataViaEventCounter = null;
+
       if (codec != null) {
         this.compressor = CodecPool.getCompressor(codec);
         if (this.compressor != null) {
@@ -182,10 +179,6 @@ public class IFile {
       } else {
         this.closeSerializers = false;
       }
-
-      //Todo debug use, should delete
-      LOG.info("dataviavent: third writer constructor");
-
     }
 
     /* The constructor to be used if the dataViaEvent is enabled.
@@ -194,9 +187,11 @@ public class IFile {
     public Writer(Configuration conf, FileSystem rfs, Supplier<Path> sFile,
                   Class keyClass, Class valueClass,
                   CompressionCodec codec, TezCounter writesCounter, TezCounter serializedBytesCounter,
-                  boolean rle, boolean dataViaEventUsed, int dataViaEventsMaxSize) throws IOException {
+                  boolean rle, boolean dataViaEventUsed, int dataViaEventsMaxSize,
+                  TezCounter dataSentViaEventSize) throws IOException {
       this.writtenRecordsCounter = writesCounter;
       this.serializedUncompressedBytes = serializedBytesCounter;
+      this.dataViaEventCounter = dataSentViaEventSize;
       this.start = 0;
       this.rle = rle;
 
@@ -220,7 +215,6 @@ public class IFile {
       } else {
         this.closeSerializers = false;
       }
-
 
       //Todo debug use, should delete
       LOG.info("dataviavent: forth writer constructor");
@@ -254,72 +248,88 @@ public class IFile {
         valueSerializer.close();
       }
 
-        // write V_END_MARKER as needed
-        writeValueMarker(out);
+      // write V_END_MARKER as needed
+      writeValueMarker(out);
 
-        // Write EOF_MARKER for key/value length
-        WritableUtils.writeVInt(out, EOF_MARKER);
-        WritableUtils.writeVInt(out, EOF_MARKER);
+      // Write EOF_MARKER for key/value length
+      WritableUtils.writeVInt(out, EOF_MARKER);
+      WritableUtils.writeVInt(out, EOF_MARKER);
 
-        decompressedBytesWritten += 2 * WritableUtils.getVIntSize(EOF_MARKER);
-        //account for header bytes
-        decompressedBytesWritten += HEADER.length;
+      decompressedBytesWritten += 2 * WritableUtils.getVIntSize(EOF_MARKER);
+      //account for header bytes
+      decompressedBytesWritten += HEADER.length;
 
-        // Close the underlying stream iff we own it...
-        if (ownOutputStream) {
-          out.close();
-        } else {
-            if (!this.dataViaEvenEnabled) {
-              if (compressOutput) {
-                // Flush
-                compressedOut.finish();
-                compressedOut.resetState();
-              }
-              // Write the checksum and flush the buffer
-              checksumOut.finish();
-            }
-            else {
-              this.saveFBS.close();
-            }
+      // Close the underlying stream iff we own it...
+      if (ownOutputStream) {
+        out.close();
+      } else {
+        if (!this.dataViaEvenEnabled) {
+          if (compressOutput) {
+            // Flush
+            compressedOut.finish();
+            compressedOut.resetState();
+          }
+          // Write the checksum and flush the buffer
+          checksumOut.finish();
         }
-
-        if(dataViaEvenEnabled)
-        {
-          compressedBytesWritten = this.saveFBS.getCompressedBytesWritten();
+        else {
+          this.saveFBS.close();
         }
-        else
-          compressedBytesWritten = rawOut.getPos() - start;
+      }
 
-        if (compressOutput) {
-          // Return back the compressor
-          CodecPool.returnCompressor(compressor);
-          compressor = null;
-        }
+      if(dataViaEvenEnabled) {
+        compressedBytesWritten = this.saveFBS.getCompressedBytesWritten();
+      }
+      else
+        compressedBytesWritten = rawOut.getPos() - start;
 
-        //store the data to be placed in event payload
-        if(inMemBuffer())
-        {
-          this.tmpDataBuffer  =
+      if (compressOutput) {
+        // Return back the compressor
+        CodecPool.returnCompressor(compressor);
+        compressor = null;
+      }
+
+      //store the data to be placed in event payload
+      if(inMemBuffer()) {
+        this.tmpDataBuffer  =
                   new byte[this.saveFBS.getBuffer().length];
 
-          System.arraycopy(this.saveFBS.getBuffer(),
-                  0, tmpDataBuffer, 0,
-                  (this.saveFBS).getBuffer().length);
+        System.arraycopy(this.saveFBS.getBuffer(),
+                0, tmpDataBuffer, 0,
+                (this.saveFBS).getBuffer().length);
+
+        //update the number of bytes that is transmit via event
+        if(this.dataViaEventCounter != null) {
+          this.dataViaEventCounter.increment((this.saveFBS).getBuffer().length);
+          LOG.info("dataviaevent: total bytes sent via data event:  " +this.dataViaEventCounter.getValue());
+
+          //start debug
+          String pid = System.getenv().get("JVM_PID");
+          LOG.info("dataviaevent: debug pid is " + pid);
+          int debugSleepTime = 300000;
+          try {
+            LOG.info("Sleeping for {} ms before shutting down", debugSleepTime);
+            Thread.sleep(debugSleepTime);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+          //end debug
+
         }
+      }
 
-        out = null;
+      out = null;
 
-        if (writtenRecordsCounter != null) {
-          writtenRecordsCounter.increment(numRecordsWritten);
-        }
+      if (writtenRecordsCounter != null) {
+        writtenRecordsCounter.increment(numRecordsWritten);
+      }
 
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Total keys written=" + numRecordsWritten + "; rleEnabled=" + rle + "; Savings" +
-                  "(due to multi-kv/rle)=" + totalKeySaving + "; number of RLEs written=" +
-                  rleWritten + "; compressedLen=" + compressedBytesWritten + "; rawLen="
-                  + decompressedBytesWritten);
-        }
-
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Total keys written=" + numRecordsWritten + "; rleEnabled=" + rle + "; Savings" +
+                "(due to multi-kv/rle)=" + totalKeySaving + "; number of RLEs written=" +
+                rleWritten + "; compressedLen=" + compressedBytesWritten + "; rawLen="
+                + decompressedBytesWritten);
+      }
       //Todo debug use, should delete
       LOG.info("dataviavent: IFile.close");
     }

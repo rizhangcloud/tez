@@ -299,10 +299,6 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
 
       skipBuffers = true;
 
-
-      //Todo debug use, should delete
-      LOG.info("dataviaevent: UnorderedPartitionedKVWriter:before select the correct writer");
-
       if (dataViaEventsEnabled) {
         // the entrance to use the dataViaEvent
         writer = new Writer(conf, rfs, () -> {
@@ -313,9 +309,7 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
             }
         }, keyClass, valClass,
                 codec, outputRecordsCounter, outputRecordBytesCounter, false, true,
-                dataViaEventsMaxSize);
-        //finalIndexPath = outputFileHandler.getOutputIndexFileForWrite(indexFileSizeEstimate);
-
+                dataViaEventsMaxSize, dataViaEventSize);
         //Todo debug use, should delete
         LOG.info("dataviaevent: UnorderedPartitionedKVWriter: dataViaEvent is enabled");
       }
@@ -324,9 +318,6 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
         finalIndexPath = outputFileHandler.getOutputIndexFileForWrite(indexFileSizeEstimate);
         writer = new IFile.Writer(conf, rfs, finalOutPath, keyClass, valClass,
             codec, outputRecordsCounter, outputRecordBytesCounter);
-
-        //Todo debug use, should delete
-        LOG.info("dataviaevent: UnorderedPartitionedKVWriter: dataViaEvent is not enabled");
       }
 
       if ((!SPILL_FILE_PERMS.equals(SPILL_FILE_PERMS.applyUMask(FsPermission.getUMask(conf))))
