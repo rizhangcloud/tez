@@ -203,7 +203,7 @@ public class FileBackedBoundedByteArrayOutputStream extends OutputStream {
         return bufferIsFull;
     }
 
-    public long getCompressedBytesWritten() {
+    public synchronized long getCompressedBytesWritten() {
         if(bufferIsFull){
             return this.rawOut.getPos() - this.start;
         }
