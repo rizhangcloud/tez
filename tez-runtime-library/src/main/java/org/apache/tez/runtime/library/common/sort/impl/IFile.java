@@ -541,7 +541,7 @@ public class IFile {
     }
 
     public byte[] getTmpDataBuffer() {
-      return tmpDataBuffer;
+      return tmpDataBuffer.clone();
     }
   }
 
