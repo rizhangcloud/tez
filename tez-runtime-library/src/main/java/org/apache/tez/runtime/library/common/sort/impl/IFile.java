@@ -181,6 +181,10 @@ public class IFile {
       }
     }
 
+    public Writer(Configuration conf, FileSystem fs, Path file) throws IOException {
+        this(conf, fs, file, null, null, null, null, null);
+    }
+
     /* The constructor to be used if the dataViaEvent is enabled.
      * It receives fs, and file, but does not create file stream right away.
      */
