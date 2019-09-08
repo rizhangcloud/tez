@@ -312,12 +312,12 @@ public class UnorderedPartitionedKVWriter extends BaseUnorderedPartitionedKVWrit
         finalIndexPath = outputFileHandler.getOutputIndexFileForWrite(indexFileSizeEstimate);
         writer = new IFile.Writer(conf, rfs, finalOutPath, keyClass, valClass,
             codec, outputRecordsCounter, outputRecordBytesCounter);
+        if ((!SPILL_FILE_PERMS.equals(SPILL_FILE_PERMS.applyUMask(FsPermission.getUMask(conf))))
+                &&(rfs.exists(finalOutPath))) {
+          rfs.setPermission(finalOutPath, SPILL_FILE_PERMS);
+        }
       }
 
-      if ((!SPILL_FILE_PERMS.equals(SPILL_FILE_PERMS.applyUMask(FsPermission.getUMask(conf))))
-        &&(rfs.exists(finalOutPath))) {
-        rfs.setPermission(finalOutPath, SPILL_FILE_PERMS);
-      }
     } else {
         skipBuffers = false;
         writer = null;
