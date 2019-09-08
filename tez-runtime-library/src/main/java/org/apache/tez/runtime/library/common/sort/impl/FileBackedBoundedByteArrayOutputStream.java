@@ -34,8 +34,8 @@ import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.hadoop.io.compress.Compressor;
 
 /**
- * <code>FileBackedBoundedByteArrayOutputStream</code> extends the <code> BoundedByteArrayOutputStream</code>
- * provide a new write  in which if the data is
+ * <code>FileBackedBoundedByteArrayOutputStream</code> extends the <code> BoundedByteArrayOutputStream</code>.
+ * It provide a new write  in which if the data is
  * less than 512 bytes, it piggybacks the data to the event; if the data size is
  * more than 512 bytes, it uses the fs stream based writer in <code>Writer</code>
  * inside <code>IFile</code>
@@ -45,7 +45,6 @@ import org.apache.hadoop.io.compress.Compressor;
 
 public class FileBackedBoundedByteArrayOutputStream extends OutputStream {
     private static final Logger LOG = LoggerFactory.getLogger(FileBackedBoundedByteArrayOutputStream.class);
-
     ByteArrayOutputStream out;
     FileSystem fs;
     Supplier<Path> pathSupplier;

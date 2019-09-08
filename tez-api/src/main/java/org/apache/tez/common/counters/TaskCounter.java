@@ -224,7 +224,7 @@ public enum TaskCounter {
 
 
   /**
-   * The size of the data that is transmitted via event
+   * The size of the data that is transmitted via event.
    *
    * Represented in number of bytes
    */

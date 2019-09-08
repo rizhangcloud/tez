@@ -20,7 +20,6 @@
 package org.apache.tez.runtime.library.common.shuffle.impl;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.BitSet;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -216,12 +215,10 @@ public class ShuffleInputEventHandlerImpl implements ShuffleEventHandler {
                                       FetchedInput fetchedInput, String hostIdentifier) throws IOException {
     switch (fetchedInput.getType()) {
       case DISK:
-
         ShuffleUtils.shuffleToDisk(((DiskFetchedInput) fetchedInput).getOutputStream(),
                 hostIdentifier, dataProto.getData().newInput(), dataProto.getCompressedLength(),
                 dataProto.getUncompressedLength(), LOG, fetchedInput.getInputAttemptIdentifier(), ifileReadAhead,
                 ifileReadAheadLength, true);
-
         break;
       case MEMORY:
         ShuffleUtils.shuffleToMemory(((MemoryFetchedInput) fetchedInput).getBytes(),
