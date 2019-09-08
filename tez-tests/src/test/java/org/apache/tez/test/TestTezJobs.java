@@ -105,7 +105,6 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.apache.tez.runtime.api.AbstractLogicalOutput;
 
 /**
  * Tests for Tez example jobs
@@ -225,7 +224,7 @@ public class TestTezJobs {
   @Test(timeout = 120000)
   public void testHashJoinExampleWithDataViaEvent() throws Exception {
 
-    Path testDir = new Path("/tmp/testHashJoinExample");
+    Path testDir = new Path("/tmp/testHashJoinExampleDataViaEvent");
     Path stagingDirPath = new Path("/tmp/tez-staging-dir");
     remoteFs.mkdirs(stagingDirPath);
     remoteFs.mkdirs(testDir);
@@ -234,7 +233,6 @@ public class TestTezJobs {
     Path dataPath2 = new Path(testDir, "inPath2");
     Path expectedOutputPath = new Path(testDir, "expectedOutputPath");
     Path outPath = new Path(testDir, "outPath");
-
 
     TezConfiguration tezConf = new TezConfiguration(mrrTezCluster.getConfig());
     tezConf.set(TezConfiguration.TEZ_AM_STAGING_DIR, stagingDirPath.toString());
