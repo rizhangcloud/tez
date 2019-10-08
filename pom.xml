@@ -360,6 +360,14 @@
             <groupId>commons-el</groupId>
             <artifactId>commons-el</artifactId>
           </exclusion>
+          <exclusion>
+            <groupId>org.apache.curator</groupId>
+            <artifactId>curator-client</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.curator </groupId>
+            <artifactId>curator-recipes</artifactId>
+          </exclusion>
         </exclusions>
       </dependency>
       <dependency>

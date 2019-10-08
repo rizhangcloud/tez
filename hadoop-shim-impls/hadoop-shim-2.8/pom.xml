@@ -50,6 +50,12 @@
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
+      <exclusions>
+        <exclusion>
+              <groupId>org.apache.hadoop</groupId>
+              <artifactId>hadoop-auth</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
   </dependencies>
 
