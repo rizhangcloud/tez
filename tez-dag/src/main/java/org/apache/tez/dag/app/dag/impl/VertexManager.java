@@ -34,6 +34,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.annotation.Nullable;
 
+import com.google.common.util.concurrent.MoreExecutors;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.tez.dag.app.dag.event.DAGEventInternalError;
 import org.apache.tez.dag.app.dag.event.VertexEventRouteEvent;
@@ -487,7 +488,7 @@ public class VertexManager {
       VertexManagerEvent e = eventQueue.poll();
       if (e != null) {
         ListenableFuture<Void> future = execService.submit(e);
-        Futures.addCallback(future, e.getCallback());
+        Futures.addCallback(future, e.getCallback(), MoreExecutors.directExecutor());
       } else {
         // This may happen. Lets say Callback succeeded on threadA. It set eventInFlight to false 
         // and called tryScheduleNextEvent() and found queue not empty but got paused before it 

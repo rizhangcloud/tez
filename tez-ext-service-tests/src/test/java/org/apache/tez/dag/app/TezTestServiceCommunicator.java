@@ -69,7 +69,7 @@ public class TezTestServiceCommunicator extends AbstractService {
       public void onFailure(Throwable t) {
         callback.indicateError(t);
       }
-    });
+    }, MoreExecutors.directExecutor());
 
   }
 
@@ -86,7 +86,7 @@ public class TezTestServiceCommunicator extends AbstractService {
       public void onFailure(Throwable t) {
         callback.indicateError(t);
       }
-    });
+    }, MoreExecutors.directExecutor());
 
   }
 

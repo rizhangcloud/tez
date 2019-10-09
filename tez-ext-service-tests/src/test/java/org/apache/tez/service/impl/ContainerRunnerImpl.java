@@ -210,7 +210,7 @@ public class ContainerRunnerImpl extends AbstractService implements ContainerRun
         workingDir, credentials, memoryPerExecutor);
     ListenableFuture<ContainerExecutionResult> future = executorService
         .submit(callable);
-    Futures.addCallback(future, new ContainerRunnerCallback(request, callable));
+    Futures.addCallback(future, new ContainerRunnerCallback(request, callable), MoreExecutors.directExecutor());
   }
 
   /**
@@ -269,7 +269,7 @@ public class ContainerRunnerImpl extends AbstractService implements ContainerRun
         new ExecutionContextImpl(localAddress.get().getHostName()), env, localDirs,
         workingDir, credentials, memoryPerExecutor, sharedExecutor);
     ListenableFuture<ContainerExecutionResult> future = executorService.submit(callable);
-    Futures.addCallback(future, new TaskRunnerCallback(request, callable));
+    Futures.addCallback(future, new TaskRunnerCallback(request, callable), MoreExecutors.directExecutor());
   }
 
 

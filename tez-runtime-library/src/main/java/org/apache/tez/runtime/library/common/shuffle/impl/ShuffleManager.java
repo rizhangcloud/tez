@@ -346,7 +346,7 @@ public class ShuffleManager implements FetcherCallback {
     }
 
     ListenableFuture<Void> runShuffleFuture = schedulerExecutor.submit(schedulerCallable);
-    Futures.addCallback(runShuffleFuture, new SchedulerFutureCallback());
+    Futures.addCallback(runShuffleFuture, new SchedulerFutureCallback(), MoreExecutors.directExecutor());
     // Shutdown this executor once this task, and the callback complete.
     schedulerExecutor.shutdown();
   }
@@ -460,7 +460,7 @@ public class ShuffleManager implements FetcherCallback {
                 }
                 ListenableFuture<FetchResult> future = fetcherExecutor
                     .submit(fetcher);
-                Futures.addCallback(future, new FetchFutureCallback(fetcher));
+                Futures.addCallback(future, new FetchFutureCallback(fetcher), MoreExecutors.directExecutor());
                 if (++count >= maxFetchersToRun) {
                   break;
                 }

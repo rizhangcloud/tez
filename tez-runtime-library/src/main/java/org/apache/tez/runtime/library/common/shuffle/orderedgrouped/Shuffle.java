@@ -270,7 +270,7 @@ public class Shuffle implements ExceptionReporter {
   public void run() throws IOException {
     merger.configureAndStart();
     runShuffleFuture = executor.submit(runShuffleCallable);
-    Futures.addCallback(runShuffleFuture, new ShuffleRunnerFutureCallback());
+    Futures.addCallback(runShuffleFuture, new ShuffleRunnerFutureCallback(), MoreExecutors.directExecutor());
     executor.shutdown();
   }
 
