@@ -41,6 +41,7 @@
     <jersey.version>1.19</jersey.version>
     <javac.version>1.8</javac.version>
     <slf4j.version>1.7.10</slf4j.version>
+    <zookeeper.version>3.5.5.7.0.2.0-SNAPSHOT</zookeeper.version>
     <curator.version>4.2.0</curator.version>
     <enforced.java.version>[${javac.version},)</enforced.java.version>
     <distMgmtSnapshotsId>apache.snapshots.https</distMgmtSnapshotsId>
@@ -369,6 +370,11 @@
             <artifactId>curator-recipes</artifactId>
           </exclusion>
         </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.zookeeper</groupId>
+        <artifactId>zookeeper</artifactId>
+        <version>${zookeeper.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.hadoop</groupId>
