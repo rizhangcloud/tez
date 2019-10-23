@@ -22,6 +22,9 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.text.NumberFormat;
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.TimerTask;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -41,6 +44,7 @@ import org.apache.tez.common.*;
 import org.apache.tez.common.counters.Limits;
 import org.apache.tez.dag.api.TezConfigurationConstants;
 import org.apache.tez.dag.api.TezReflectionException;
+import org.apache.tez.dag.api.client.rpc.DAGClientAMProtocolRPC;
 import org.apache.tez.serviceplugins.api.ServicePluginsDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1166,7 +1170,7 @@ public class TezClient {
   static DAGClient getDAGClient(ApplicationId appId, TezConfiguration tezConf, YarnConfiguration
       yarnConf, FrameworkClient frameworkClient)
       throws IOException, TezException {
-    return new DAGClientImpl(appId, getDefaultTezDAGID(appId), tezConf,
+    return getDAGClientForDagId(appId, getDefaultTezDAGID(appId), tezConf,
         yarnConf, frameworkClient);
   }
 
@@ -1175,6 +1179,11 @@ public class TezClient {
                                 FrameworkClient frameworkClient)
       throws IOException, TezException {
     return getDAGClient(appId, tezConf, new YarnConfiguration(tezConf), frameworkClient);
+  }
+
+  private static DAGClient getDAGClientForDagId(ApplicationId appId, String dagId,
+          TezConfiguration tezConf, YarnConfiguration yarnConf, FrameworkClient frameworkClient) {
+    return new DAGClientImpl(appId, dagId, tezConf, yarnConf, frameworkClient);
   }
 
   // DO NOT CHANGE THIS. This code is replicated from TezDAGID.java
@@ -1225,6 +1234,46 @@ public class TezClient {
   @VisibleForTesting
   protected synchronized ScheduledExecutorService getAMKeepAliveService() {
     return amKeepAliveService;
+  }
+
+  /**
+   * Get DAGClients for any DAGs that are currently being run by this TezClient.
+   */
+  @Public
+  public List<DAGClient> getCurrentDAGClients() throws TezException {
+    List<DAGClient> currentDAGClients = new ArrayList<DAGClient>();
+
+    ApplicationId appId = null;
+    if (this.isSession) {
+      appId = this.sessionAppId;
+    } else {
+      appId = this.lastSubmittedAppId;
+    }
+    if (appId == null) {
+      return currentDAGClients;
+    }
+
+    try {
+      DAGClientAMProtocolBlockingPB proxy = this.getAMProxy(appId);
+      DAGClientAMProtocolRPC.GetAllDAGsResponseProto allDAGSResponse =
+              proxy.getAllDAGs(null, DAGClientAMProtocolRPC.GetAllDAGsRequestProto.newBuilder().build());
+      if (allDAGSResponse.getDagIdCount() == 0) {
+        return currentDAGClients;
+      }
+
+      for (String dagId : allDAGSResponse.getDagIdList()) {
+        LOG.info("Getting DAGClient for running DAG " + dagId);
+        DAGClient dagClient = this.getDAGClientForDagId(appId, dagId,
+                amConfig.getTezConfiguration(), amConfig.getYarnConfiguration(), frameworkClient);
+        currentDAGClients.add(dagClient);
+      }
+
+    } catch (TezException te) {
+      throw te;
+    } catch (Exception e) {
+      throw new TezException(e);
+    }
+    return currentDAGClients;
   }
 
   /**
