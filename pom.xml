@@ -16,7 +16,7 @@
   <groupId>org.apache.tez</groupId>
   <artifactId>tez</artifactId>
   <packaging>pom</packaging>
-  <version>0.9.1.7.0.0.0-SNAPSHOT</version>
+  <version>0.9.1.7.1.0.0-SNAPSHOT</version>
   <name>tez</name>
 
   <licenses>
@@ -34,15 +34,15 @@
   <properties>
     <maven.test.redirectTestOutputToFile>true</maven.test.redirectTestOutputToFile>
     <clover.license>${user.home}/clover.license</clover.license>
-    <hadoop.version>3.1.1.7.0.0.0-SNAPSHOT</hadoop.version>
-    <ozone.version>0.4.0.7.0.2.0-SNAPSHOT</ozone.version>
+    <hadoop.version>3.1.1.7.1.0.0-SNAPSHOT</hadoop.version>
+    <ozone.version>0.4.0.7.1.0.0-SNAPSHOT</ozone.version>
     <jetty.version>9.3.24.v20180605</jetty.version>
     <netty.version>3.10.5.Final</netty.version>
     <pig.version>0.13.0</pig.version>
     <jersey.version>1.19</jersey.version>
     <javac.version>1.8</javac.version>
     <slf4j.version>1.7.10</slf4j.version>
-    <zookeeper.version>3.5.5.7.0.2.0-SNAPSHOT</zookeeper.version>
+    <zookeeper.version>3.5.5.7.1.0.0-SNAPSHOT</zookeeper.version>
     <curator.version>4.2.0</curator.version>
     <enforced.java.version>[${javac.version},)</enforced.java.version>
     <distMgmtSnapshotsId>apache.snapshots.https</distMgmtSnapshotsId>
@@ -61,7 +61,7 @@
     <findbugs-maven-plugin.version>3.0.1</findbugs-maven-plugin.version>
     <javadoc-maven-plugin.version>2.10.4</javadoc-maven-plugin.version>
     <shade-maven-plugin.version>2.4.3</shade-maven-plugin.version>
-    <gcs.version>1.9.10.7.0.0.0-SNAPSHOT</gcs.version>
+    <gcs.version>1.9.10.7.1.0.0-SNAPSHOT</gcs.version>
   </properties>
   <scm>
     <connection>${scm.url}</connection>
